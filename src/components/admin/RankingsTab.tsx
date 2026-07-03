@@ -59,6 +59,9 @@ export function RankingsTab() {
   const handleSave = async () => {
     setSaving(true);
     setSaveError('');
+    // The RPC reads previous positions from the table itself; only the target
+    // order is sent. The fallback path still writes previous_position from the
+    // staged rows, matching the pre-RPC behavior.
     const payload = displayedOrder.map((r, i) => ({
       player_id: r.player_id,
       position: i + 1,
@@ -67,7 +70,9 @@ export function RankingsTab() {
 
     // Prefer the atomic RPC (single transaction); fall back to per-row updates
     // when the function has not been deployed to this database yet.
-    const { error: rpcError } = await supabase.rpc('admin_reorder_rankings', { p_order: payload });
+    const { error: rpcError } = await supabase.rpc('admin_reorder_rankings', {
+      p_order: payload.map(({ player_id, position }) => ({ player_id, position })),
+    });
     if (rpcError) {
       const functionMissing = rpcError.code === 'PGRST202' || rpcError.code === '42883';
       if (!functionMissing) {
