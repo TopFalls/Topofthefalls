@@ -17,6 +17,7 @@ import { QueryError } from '../components/QueryError';
 import { formatDate } from '../utils/time';
 import type { Match, PlayerDisciplineStats } from '../types/database';
 import { LEAGUE, type LeagueDiscipline } from '../config/league';
+import { canChallenge } from '../lib/ladder';
 
 type Discipline = LeagueDiscipline;
 const DISCIPLINES = LEAGUE.disciplines.map((d) => d.value) as Discipline[];
@@ -28,14 +29,8 @@ const DISC_EMOJI: Record<Discipline, string> = {
 };
 type HistoryFilter = 'All' | 'Wins' | 'Losses' | Discipline;
 
-function canChallenge(myPos: number, theirPos: number): boolean {
-  if (myPos === theirPos) return false;
-  if (myPos === 1) return theirPos <= 5; // #1 can challenge down to top-5 to fulfill obligation
-  if (theirPos >= myPos) return false; // normally can only challenge up
-  if (myPos <= 11) return theirPos === myPos - 1; // Top 11 can only challenge 1 spot up
-  if (myPos === 12) return theirPos === 11 || theirPos === 10; // Only #11 and #12 can challenge #10
-  return myPos - theirPos <= 2; // spots 12+ can challenge up to 2 spots
-}
+// Ladder rules live in src/lib/ladder.ts — this page previously carried a
+// stale copy that still allowed #1 to challenge down (a TOC rule TOF removed).
 
 export default function PlayerPage() {
   const { id } = useParams<{ id: string }>();

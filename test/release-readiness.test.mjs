@@ -17,7 +17,10 @@ const updateMatchScore = read('supabase/functions/update-match-score/index.ts');
 const manageTreasury = read('supabase/functions/manage-treasury/index.ts');
 const rank1Compliance = read('supabase/functions/rank1-compliance/index.ts');
 const setPlayerActive = read('supabase/functions/set-player-active/index.ts');
-const adminPage = read('src/pages/AdminPage.tsx');
+// Admin actions moved from the monolithic AdminPage into per-tab components.
+const adminTabs = ['DisputesTab', 'ChallengesTab', 'MatchesAdminTab']
+  .map((name) => read(`src/components/admin/${name}.tsx`))
+  .join('\n');
 const databaseTypes = read('src/types/database.ts');
 const matchPage = read('src/pages/MatchPage.tsx');
 const hardeningMigrationPath = 'supabase/migrations/20260519110000_release_hardening_guardrails.sql';
@@ -117,7 +120,7 @@ test('admin match resolution is gated and explicit when forcing active matches',
   assert.match(resolveDispute, /force_complete/);
   assert.match(resolveDispute, /Winner must be one of the match players/);
   assert.match(resolveDispute, /winnerScore < raceTarget/);
-  assert.match(adminPage, /force_complete:\s*true/);
+  assert.match(adminTabs, /force_complete:\s*true/);
 });
 
 test('match confirmation refreshes winner rank after rank cascade before stats update', () => {
