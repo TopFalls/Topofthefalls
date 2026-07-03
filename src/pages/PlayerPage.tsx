@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, Swords } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { unwrapList } from '../lib/supabaseResult';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
 import { Avatar } from '../components/Avatar';
@@ -12,6 +13,7 @@ import { InactivePlayerBanner } from '../components/InactivePlayerBanner';
 import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
 import { CardSkeleton } from '../components/Skeleton';
+import { QueryError } from '../components/QueryError';
 import { formatDate } from '../utils/time';
 import type { Match, PlayerDisciplineStats } from '../types/database';
 import { LEAGUE, type LeagueDiscipline } from '../config/league';
@@ -50,17 +52,16 @@ export default function PlayerPage() {
     ? canChallenge(myRanking.ranking.position, targetRanking.ranking.position)
     : false;
 
-  const { data: matches = [], isLoading: matchesLoading } = useQuery<Match[]>({
+  const { data: matches = [], isLoading: matchesLoading, isError: matchesError, refetch: refetchMatches } = useQuery<Match[]>({
     queryKey: ['player-matches', id],
     queryFn: async () => {
-      const { data } = await supabase
+      return unwrapList(await supabase
         .from('matches')
         .select('*')
         .or(`player1_id.eq.${id},player2_id.eq.${id}`)
         .in('status', ['confirmed', 'resolved'])
         .order('completed_at', { ascending: false })
-        .limit(20);
-      return data ?? [];
+        .limit(20));
     },
     enabled: !!id,
   });
@@ -68,11 +69,10 @@ export default function PlayerPage() {
   const { data: disciplineStats = [] } = useQuery<PlayerDisciplineStats[]>({
     queryKey: ['player-discipline-stats', id],
     queryFn: async () => {
-      const { data } = await supabase
+      return unwrapList(await supabase
         .from('player_discipline_stats')
         .select('*')
-        .eq('player_id', id);
-      return data ?? [];
+        .eq('player_id', id));
     },
     enabled: !!id,
   });
@@ -239,6 +239,8 @@ export default function PlayerPage() {
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-12 rounded-lg" />)}
             </div>
+          ) : matchesError ? (
+            <QueryError title="Couldn't load matches" onRetry={() => refetchMatches()} />
           ) : matches.length === 0 ? (
             <p className="text-[#6B7280] text-sm font-[Barlow] py-4 text-center">No matches yet.</p>
           ) : (

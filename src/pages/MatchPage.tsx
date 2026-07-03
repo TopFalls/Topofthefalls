@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { callEdgeFunction } from '../lib/edgeFunctions';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
 import { PoolBall } from '../components/PoolBall';
@@ -212,12 +213,13 @@ export default function MatchPage() {
     queryKey: ['match', id],
     queryFn: async () => {
       // id may be either a match UUID (from MatchesPage) or a challenge UUID (from ChallengesPage)
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('matches')
         .select('*')
         .or(`id.eq.${id},challenge_id.eq.${id}`)
         .single();
-      return data!;
+      if (error) throw error;
+      return data;
     },
     enabled: !!id,
     refetchInterval: 5000,
@@ -255,20 +257,8 @@ export default function MatchPage() {
   const raceWinnerName = raceWinnerId === match.player1_id ? p1Name : raceWinnerId === match.player2_id ? p2Name : '';
   const paymentMethodAvailable = (method: PaymentMethodDefinition) => !method.urlEnv || !!paymentMethodUrl(method.id);
 
-  const callFn = async (path: string, body: object) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Session expired — please log in again.');
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify(body),
-    });
-    try {
-      return await res.json();
-    } catch {
-      throw new Error(`Unexpected server response (${res.status})`);
-    }
-  };
+  const callFn = (path: string, body: object) =>
+    callEdgeFunction<Record<string, unknown> & { error?: string }>(path, body);
 
   const sendScore = async (p1Score: number, p2Score: number) => {
     await callFn('update-match-score', {

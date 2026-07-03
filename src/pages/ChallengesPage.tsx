@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Clock, MapPin, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { callEdgeFunction, edgeErrorMessage } from '../lib/edgeFunctions';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
 import { GlassCard } from '../components/GlassCard';
@@ -56,14 +57,12 @@ function RespondModal({
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
-  const callFn = async (body: object) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/respond-to-challenge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify(body),
-    });
-    return res.json() as Promise<{ success?: boolean; error?: string }>;
+  const callFn = async (body: object): Promise<{ success?: boolean; error?: string }> => {
+    try {
+      return await callEdgeFunction<{ success?: boolean }>('respond-to-challenge', body);
+    } catch (err) {
+      return { error: edgeErrorMessage(err) };
+    }
   };
 
   const handleAccept = async () => {
@@ -228,12 +227,13 @@ export default function ChallengesPage() {
   };
 
   const callFn = async (body: object) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/respond-to-challenge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify(body),
-    });
+    // Fire-and-refresh: the list refetch reflects whatever state the server
+    // landed in, matching the previous behavior of this call site.
+    try {
+      await callEdgeFunction('respond-to-challenge', body);
+    } catch {
+      // surfaced by the refreshed list
+    }
     qc.invalidateQueries({ queryKey: ['challenges'] });
   };
 

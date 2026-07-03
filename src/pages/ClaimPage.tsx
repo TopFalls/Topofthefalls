@@ -4,6 +4,7 @@ import { Search, X, CheckCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { QueryError } from '../components/QueryError';
 import { supabase } from '../lib/supabase';
+import { callEdgeFunction, edgeErrorMessage } from '../lib/edgeFunctions';
 import { useAuthStore } from '../stores/authStore';
 import { PoolBall } from '../components/PoolBall';
 import { Button } from '../components/Button';
@@ -52,18 +53,14 @@ export default function ClaimPage() {
     if (!selected) return;
     setClaiming(true);
     setClaimError('');
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claim-player`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({ player_id: selected.player.id }),
-    });
-    const json = await res.json() as { success?: boolean; error?: string };
+    try {
+      await callEdgeFunction('claim-player', { player_id: selected.player.id });
+    } catch (err) {
+      setClaimError(edgeErrorMessage(err, 'Could not claim this player.'));
+      setClaiming(false);
+      return;
+    }
     setClaiming(false);
-    if (json.error) { setClaimError(json.error); return; }
     // Refresh player in store
     const { data } = await supabase.from('players').select('*').eq('id', selected.player.id).single();
     if (data) {

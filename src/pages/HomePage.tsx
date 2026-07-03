@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
 import { supabase } from '../lib/supabase';
+import { unwrapList } from '../lib/supabaseResult';
 import { PoolBall } from '../components/PoolBall';
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
@@ -38,12 +39,11 @@ export default function HomePage() {
     queryKey: ['home-pending-challenges', player?.id],
     queryFn: async () => {
       if (!player) return [];
-      const { data } = await supabase
+      return unwrapList(await supabase
         .from('challenges')
         .select('*')
         .eq('challenged_id', player.id)
-        .eq('status', 'pending');
-      return data ?? [];
+        .eq('status', 'pending'));
     },
     enabled: !!player,
     refetchInterval: 30000,
@@ -54,12 +54,11 @@ export default function HomePage() {
     queryKey: ['home-action-matches', player?.id],
     queryFn: async () => {
       if (!player) return [];
-      const { data } = await supabase
+      return unwrapList(await supabase
         .from('matches')
         .select('*')
         .or(`player1_id.eq.${player.id},player2_id.eq.${player.id}`)
-        .in('status', ['in_progress', 'submitted', 'scheduled']);
-      return data ?? [];
+        .in('status', ['in_progress', 'submitted', 'scheduled']));
     },
     enabled: !!player,
     refetchInterval: 30000,
@@ -69,14 +68,13 @@ export default function HomePage() {
     queryKey: ['notifications', 'preview', player?.id],
     queryFn: async () => {
       if (!player) return [];
-      const { data } = await supabase
+      return unwrapList(await supabase
         .from('notifications')
         .select('*')
         .eq('player_id', player.id)
         .eq('is_read', false)
         .order('created_at', { ascending: false })
-        .limit(3);
-      return data ?? [];
+        .limit(3));
     },
     enabled: !!player,
   });
@@ -84,12 +82,11 @@ export default function HomePage() {
   const { data: feed = [] } = useQuery<ActivityFeedItem[]>({
     queryKey: ['activity-feed', 'preview'],
     queryFn: async () => {
-      const { data } = await supabase
+      return unwrapList(await supabase
         .from('activity_feed')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(6);
-      return data ?? [];
+        .limit(6));
     },
   });
 
