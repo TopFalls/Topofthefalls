@@ -13,6 +13,7 @@ import { PWAInstallBanner } from './PWAInstallBanner';
 import { AdminThemeSwitcher } from './admin/AdminThemeSwitcher';
 import { isTopOfTheFallsDemoMode } from '../demo/topOfTheFallsDemo';
 import { useQuery } from '@tanstack/react-query';
+import type { Profile, Player } from '../types/database';
 
 // Screens that show bottom nav
 const NAV_ROUTES = ['/', '/rankings', '/matches', '/notifications', '/settings', '/challenges'];
@@ -78,10 +79,8 @@ export const Layout: React.FC = () => {
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('players').select('*').eq('profile_id', userId).single(),
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (profileRes.data) setProfile(profileRes.data as any);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (playerRes.data) setPlayer(playerRes.data as any);
+    if (profileRes.data) setProfile(profileRes.data as Profile);
+    if (playerRes.data) setPlayer(playerRes.data as Player);
   };
 
   // Route guards

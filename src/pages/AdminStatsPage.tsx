@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   ChevronLeft, ChevronRight, Users, Swords, Trophy, AlertTriangle, DollarSign,
   Activity, MapPin, CreditCard, RefreshCw, ArrowUp, ArrowDown, Minus,
-  Flame, Target, CalendarDays, UserRound,
+  Flame, Target, CalendarDays, UserRound, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { GlassCard } from '../components/GlassCard';
@@ -28,8 +28,7 @@ const DISC_EMOJI = Object.fromEntries(LEAGUE.disciplines.map((d) => [d.value, d.
 // ─── Small building blocks ───────────────────────────────────────────────────
 
 function StatTile({ Icon, iconBg, iconColor, value, label, sub, valueColor = '#E8E2D6' }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Icon: React.FC<any>;
+  Icon: LucideIcon;
   iconBg: string;
   iconColor: string;
   value: React.ReactNode;
@@ -58,8 +57,7 @@ function MiniStat({ value, label, color = '#E8E2D6' }: { value: React.ReactNode;
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function Section({ title, Icon, children, action }: { title: string; Icon: React.FC<any>; children: React.ReactNode; action?: React.ReactNode }) {
+function Section({ title, Icon, children, action }: { title: string; Icon: LucideIcon; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <GlassCard className="p-4">
       <div className="flex items-center justify-between mb-3">
