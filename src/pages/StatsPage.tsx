@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Users, Trophy, Swords, CircleDot } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
 import { useLeagueStats, type BreakdownRow } from '../hooks/useLeagueStats';
 import { GlassCard } from '../components/GlassCard';
@@ -94,8 +95,16 @@ function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string
 
 export default function StatsPage() {
   const navigate = useNavigate();
+  const { profile } = useAuthStore();
   const rankingsQuery = useRankings();
   const statsQuery = useLeagueStats();
+
+  // Admin-only, same gate as AdminPage.
+  if (!profile) return null;
+  if (!['admin', 'super_admin'].includes(profile.role)) {
+    navigate('/', { replace: true });
+    return null;
+  }
 
   const rankings = rankingsQuery.data ?? [];
   const stats = statsQuery.data;

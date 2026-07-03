@@ -368,13 +368,15 @@ export default function HomePage() {
             </div>
             <div className="text-[#6B7280] text-xs font-[Barlow]">League funds</div>
           </GlassCard>
-          <GlassCard className="p-4 col-span-2" hover onClick={() => navigate('/stats')}>
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart3 size={16} className="text-[#9CA3AF]" />
-              <span className="font-[Barlow] font-semibold text-[#E8E2D6] text-sm">League Stats</span>
-            </div>
-            <div className="text-[#6B7280] text-xs font-[Barlow]">Season totals, discipline &amp; venue breakdowns, leaders</div>
-          </GlassCard>
+          {profile && ['admin', 'super_admin'].includes(profile.role) && (
+            <GlassCard className="p-4 col-span-2" hover onClick={() => navigate('/stats')}>
+              <div className="flex items-center gap-2 mb-1">
+                <BarChart3 size={16} className="text-[#9CA3AF]" />
+                <span className="font-[Barlow] font-semibold text-[#E8E2D6] text-sm">League Stats</span>
+              </div>
+              <div className="text-[#6B7280] text-xs font-[Barlow]">Admin · season totals, discipline &amp; venue breakdowns, leaders</div>
+            </GlassCard>
+          )}
         </div>
       </motion.div>
 
