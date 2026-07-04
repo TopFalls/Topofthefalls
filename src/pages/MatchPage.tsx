@@ -13,7 +13,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase, functionsUrl } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { callEdgeFunction } from '../lib/edgeFunctions';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
 import { PoolBall } from '../components/PoolBall';
@@ -272,28 +273,15 @@ export default function MatchPage() {
   const raceWinnerName = raceWinnerId === match.player1_id ? p1Name : raceWinnerId === match.player2_id ? p2Name : '';
   const paymentMethodAvailable = (method: PaymentMethodDefinition) => !method.urlEnv || !!paymentMethodUrl(method.id);
 
-  const callFn = async (path: string, body: object) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Session expired — please log in again.');
-    const res = await fetch(functionsUrl(path), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-      body: JSON.stringify(body),
-    });
-    try {
-      return await res.json();
-    } catch {
-      throw new Error(`Unexpected server response (${res.status})`);
-    }
-  };
+  const callFn = (path: string, body: object) =>
+    callEdgeFunction<Record<string, unknown> & { error?: string }>(path, body);
 
   const sendScore = async (p1Score: number, p2Score: number) => {
-    const json = await callFn('update-match-score', {
+    await callFn('update-match-score', {
       match_id: match.id,
       my_score: isPlayer1 ? p1Score : p2Score,
       opponent_score: isPlayer1 ? p2Score : p1Score,
     });
-    if (json?.error) throw new Error(json.error);
     qc.invalidateQueries({ queryKey: ['match', id] });
   };
 
@@ -439,8 +427,7 @@ export default function MatchPage() {
                 setSubmitting(true);
                 setSubmitError('');
                 try {
-                  const json = await callFn('update-match-score', { match_id: match.id, my_score: 0, opponent_score: 0 });
-                  if (json?.error) throw new Error(json.error);
+                  await callFn('update-match-score', { match_id: match.id, my_score: 0, opponent_score: 0 });
                 } catch (e) {
                   setSubmitError(e instanceof Error ? e.message : 'Failed to start match.');
                 } finally {

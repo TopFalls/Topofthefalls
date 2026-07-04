@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, CheckCheck } from 'lucide-react';
-import { supabase, functionsUrl } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { callEdgeFunction, edgeErrorMessage } from '../lib/edgeFunctions';
 import { useAuthStore } from '../stores/authStore';
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
@@ -45,14 +46,12 @@ function RespondInline({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const callFn = async (body: object) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(functionsUrl('respond-to-challenge'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify(body),
-    });
-    return res.json() as Promise<{ success?: boolean; error?: string }>;
+  const callFn = async (body: object): Promise<{ success?: boolean; error?: string }> => {
+    try {
+      return await callEdgeFunction<{ success?: boolean }>('respond-to-challenge', body);
+    } catch (err) {
+      return { error: edgeErrorMessage(err) };
+    }
   };
 
   const handleDecline = async () => {

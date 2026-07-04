@@ -25,8 +25,7 @@ type PhosphorWeight = 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone'
 interface NavItem {
   label: string;
   path: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Icon: React.FC<any>;
+  Icon: React.ComponentType<{ size?: number; weight?: PhosphorWeight; style?: React.CSSProperties }>;
   center?: boolean;
 }
 

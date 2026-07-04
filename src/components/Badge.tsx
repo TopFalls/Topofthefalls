@@ -1,6 +1,6 @@
 import React from 'react';
 
-type BadgeVariant = 'win' | 'success' | 'loss' | 'pending' | 'gold' | 'default' | 'info';
+export type BadgeVariant = 'win' | 'success' | 'loss' | 'pending' | 'gold' | 'default' | 'info';
 
 const BADGE_STYLES: Record<BadgeVariant, string> = {
   win:     'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30',

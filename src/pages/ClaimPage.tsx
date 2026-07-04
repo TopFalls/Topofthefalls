@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, CheckCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { QueryError } from '../components/QueryError';
-import { supabase, functionsUrl } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { callEdgeFunction, edgeErrorMessage } from '../lib/edgeFunctions';
 import { useAuthStore } from '../stores/authStore';
 import { PoolBall } from '../components/PoolBall';
 import { Button } from '../components/Button';
@@ -53,27 +54,18 @@ export default function ClaimPage() {
     setClaiming(true);
     setClaimError('');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(functionsUrl('claim-player'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ player_id: selected.player.id }),
-      });
-      const json = await res.json() as { success?: boolean; error?: string };
-      if (json.error) { setClaimError(json.error); return; }
-      // Refresh player in store
-      const { data } = await supabase.from('players').select('*').eq('id', selected.player.id).single();
-      if (data) {
-        setPlayer(data);
-        localStorage.setItem('toc-new-user', '1');
-      }
-    } catch {
-      setClaimError('Network error — check your connection and try again.');
-    } finally {
+      await callEdgeFunction('claim-player', { player_id: selected.player.id });
+    } catch (err) {
+      setClaimError(edgeErrorMessage(err, 'Could not claim this player.'));
       setClaiming(false);
+      return;
+    }
+    setClaiming(false);
+    // Refresh player in store
+    const { data } = await supabase.from('players').select('*').eq('id', selected.player.id).single();
+    if (data) {
+      setPlayer(data);
+      localStorage.setItem('toc-new-user', '1');
     }
   };
 

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, CheckCircle, Swords, Minus, Plus } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
-import { supabase, functionsUrl } from '../lib/supabase';
+import { callEdgeFunction, edgeErrorMessage } from '../lib/edgeFunctions';
 import { PoolBall } from '../components/PoolBall';
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
@@ -75,19 +75,11 @@ export default function ChallengePage() {
     }
     setSending(true);
     setError('');
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setError('Session expired — please log in again.'); setSending(false); return; }
     try {
-      const res = await fetch(functionsUrl('create-challenge'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ challenged_player_id: id, discipline, race_length: race }),
-      });
-      const json = await res.json() as { challenge_id?: string; error?: string };
-      if (json.error) { setError(json.error); return; }
+      await callEdgeFunction('create-challenge', { challenged_player_id: id, discipline, race_length: race });
       setSent(true);
-    } catch {
-      setError('Network error — please try again.');
+    } catch (err) {
+      setError(edgeErrorMessage(err, 'Network error — please try again.'));
     } finally {
       setSending(false);
     }
