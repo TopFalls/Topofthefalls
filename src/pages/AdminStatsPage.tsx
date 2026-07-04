@@ -144,6 +144,20 @@ export default function AdminStatsPage() {
     return null;
   }
 
+  // isError must win over the loading skeleton: on a failed initial fetch,
+  // data stays undefined and the skeleton branch would otherwise show forever.
+  if (isError) {
+    return (
+      <div className="min-h-screen px-4 pt-8 max-w-5xl mx-auto text-center py-16">
+        <div className="text-4xl mb-3">⚠️</div>
+        <div className="font-[Bebas_Neue] text-2xl text-[#E8E2D6]">Could not load league stats</div>
+        <button onClick={() => refetch()} className="mt-4 px-4 py-2 rounded-lg bg-[var(--toc-theme-accent)] text-white text-sm font-[Barlow]">
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   if (isLoading || !data || !derived) {
     return (
       <div className="min-h-screen px-4 pt-8 space-y-4 max-w-5xl mx-auto">
@@ -153,18 +167,6 @@ export default function AdminStatsPage() {
           <CardSkeleton lines={3} /><CardSkeleton lines={3} />
         </div>
         <CardSkeleton lines={5} />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="min-h-screen px-4 pt-8 max-w-5xl mx-auto text-center py-16">
-        <div className="text-4xl mb-3">⚠️</div>
-        <div className="font-[Bebas_Neue] text-2xl text-[#E8E2D6]">Could not load league stats</div>
-        <button onClick={() => refetch()} className="mt-4 px-4 py-2 rounded-lg bg-[var(--toc-theme-accent)] text-white text-sm font-[Barlow]">
-          Try again
-        </button>
       </div>
     );
   }
