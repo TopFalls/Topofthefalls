@@ -64,6 +64,8 @@ export default function App() {
               <Route path="/admin/stats"   element={<Suspense><AdminStatsPage /></Suspense>} />
               <Route path="/treasury"      element={<Suspense><TreasuryPage /></Suspense>} />
               <Route path="/activity"      element={<Suspense><ActivityPage /></Suspense>} />
+              {/* Old simple stats page (PR #8) consolidated into the admin dashboard */}
+              <Route path="/stats"         element={<Navigate to="/admin/stats" replace />} />
               <Route path="*"              element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, functionsUrl } from './supabase';
 
 export class EdgeFunctionError extends Error {
   readonly status: number | null;
@@ -25,7 +25,7 @@ export async function callEdgeFunction<T = Record<string, unknown>>(
 
   let res: Response;
   try {
-    res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`, {
+    res = await fetch(functionsUrl(name), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

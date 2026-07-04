@@ -21,6 +21,7 @@ import { PoolBall } from '../components/PoolBall';
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
+import { QueryError } from '../components/QueryError';
 import { formatDateTime } from '../utils/time';
 import type { Match } from '../types/database';
 import {
@@ -209,7 +210,7 @@ export default function MatchPage() {
   const [lastScoreAction, setLastScoreAction]     = useState<LastScoreAction | null>(null);
   const [undoing, setUndoing]                     = useState(false);
 
-  const { data: match, isLoading } = useQuery<Match>({
+  const { data: match, isLoading, isError, refetch } = useQuery<Match>({
     queryKey: ['match', id],
     queryFn: async () => {
       // id may be either a match UUID (from MatchesPage) or a challenge UUID (from ChallengesPage)
@@ -224,6 +225,21 @@ export default function MatchPage() {
     enabled: !!id,
     refetchInterval: 5000,
   });
+
+  if (isError) {
+    return (
+      <div className="min-h-screen px-4 pt-4">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-[#9CA3AF] p-2 -ml-2 mb-4">
+          <ChevronLeft size={18} /> Back
+        </button>
+        <QueryError
+          title="Match Not Found"
+          message="This match couldn't be loaded. It may have been removed, or your connection dropped."
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
+  }
 
   if (isLoading || !match) {
     return (

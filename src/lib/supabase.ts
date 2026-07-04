@@ -1,25 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// TOF project defaults. The anon key is safe to commit — it is already embedded
+// in every deployed bundle and gated by row-level security (see PR #3). Env vars
+// still win, so a branch database can be targeted per-deployment; the fallback
+// keeps preview deploys (where Vercel env vars may not be scoped) from throwing
+// at module init and rendering a black screen.
+const TOF_SUPABASE_URL = 'https://sqcqmovskpoyutfyslym.supabase.co';
+const TOF_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxY3Ftb3Zza3BveXV0ZnlzbHltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMTAyNTksImV4cCI6MjA5NTc4NjI1OX0.QpySvysSF1vTGu1k-X9OIr9ZwEZAcuEqQpacx3XZdns';
 
-if (!url || !key) {
-  // Without this the app dies during module evaluation and the user sees only
-  // a black page — render a readable explanation before throwing.
-  const root = typeof document !== 'undefined' ? document.getElementById('root') : null;
-  if (root) {
-    root.innerHTML =
-      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0D0D0D;color:#E8E2D6;font-family:system-ui,sans-serif;text-align:center;">' +
-      '<div><h1 style="font-size:20px;margin:0 0 8px;">Configuration error</h1>' +
-      '<p style="color:#9CA3AF;font-size:14px;max-width:460px;margin:0;line-height:1.5;">' +
-      'This deployment is missing its Supabase settings (<code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>). ' +
-      'In Vercel: Project Settings &rarr; Environment Variables &rarr; add both for this environment (Production, Preview, or Development), then redeploy.' +
-      '</p></div></div>';
-  }
-  throw new Error('[TOC] Missing Supabase env vars — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local');
+const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+
+if (!envUrl || !envKey) {
+  console.warn('[TOF] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set — using built-in TOF project defaults.');
 }
 
-export const supabase = createClient(url, key, {
+export const SUPABASE_URL = envUrl || TOF_SUPABASE_URL;
+const key = envKey || TOF_SUPABASE_ANON_KEY;
+
+// Base for calling edge functions; use this instead of reading
+// import.meta.env.VITE_SUPABASE_URL directly so the fallback applies everywhere.
+export const functionsUrl = (name: string) => `${SUPABASE_URL}/functions/v1/${name}`;
+
+export const supabase = createClient(SUPABASE_URL, key, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

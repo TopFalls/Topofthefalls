@@ -18,7 +18,7 @@ export default function ChallengePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { player } = useAuthStore();
-  const { data: rankings = [] } = useRankings();
+  const { data: rankings = [], isLoading: rankingsLoading } = useRankings();
 
   const target   = rankings.find((r) => r.player.id === id);
   const myRanking = rankings.find((r) => r.player.id === player?.id);
@@ -31,7 +31,26 @@ export default function ChallengePage() {
   const [sent, setSent]             = useState(false);
   const [error, setError]           = useState('');
 
-  if (!target) return null;
+  // Rankings still loading (or the player id is bad) — never render a blank page.
+  if (!target) {
+    return (
+      <div className="min-h-screen px-4 pt-4">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-[#9CA3AF] p-2 -ml-2 mb-4">
+          <ChevronLeft size={24} /> Back
+        </button>
+        {rankingsLoading ? (
+          <div className="space-y-4">
+            <div className="skeleton h-20 rounded-xl" />
+            <div className="skeleton h-40 rounded-xl" />
+          </div>
+        ) : (
+          <div className="text-center py-16 text-[#9CA3AF] font-[Barlow]">
+            Player not found. They may have been removed from the list.
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const bothInTop20 = !!myRanking && myRanking.ranking.position <= 20 && target.ranking.position <= 20;
 
