@@ -1,21 +1,27 @@
 name: Supabase keep-alive
 
 # Free-tier Supabase projects pause after ~7 days of inactivity, which would
-# take TOF offline between league nights until someone manually restores it.
-# This job pings the REST API every 6 days so the project stays active.
+# take the league app offline between league nights until someone manually
+# restores it. This job pings the REST API so the project stays active.
 #
-# The token below is the Supabase "anon public" key (role: anon). It is safe to
-# commit: it is already embedded in the deployed frontend bundle and is gated by
-# row-level security — it grants no more than any visitor to the app already has.
-# That is why no GitHub secret is required.
+# DISABLED PENDING SETUP. The scheduled trigger is intentionally removed until
+# this league's own Supabase project exists and the repository variables below
+# are set. Do not re-add a schedule that points at another league's project.
+#
+# To enable:
+#   1. Set repository variable  SUPABASE_URL       = https://<this-league-ref>.supabase.co
+#   2. Set repository variable  SUPABASE_ANON_KEY  = <this-league's anon public key>
+#      (The anon key is RLS-gated and already shipped in the frontend bundle,
+#      so a repository variable is sufficient; a secret also works.)
+#   3. Restore the schedule trigger:
+#        schedule:
+#          - cron: '17 6 */6 * *'   # every 6 days at ~06:17 UTC
 #
 # Note: GitHub only runs scheduled workflows from the DEFAULT branch (main).
-# Also, 6 days leaves ~1 day of margin before the 7-day pause; if a scheduled
-# run is ever delayed/skipped, lower the interval (e.g. */3 or */4).
+# 6 days leaves ~1 day of margin before the 7-day pause; if a scheduled run is
+# ever delayed/skipped, lower the interval (e.g. */3 or */4).
 
 on:
-  schedule:
-    - cron: '17 6 */6 * *'  # every 6 days at ~06:17 UTC
   workflow_dispatch: {}
 
 jobs:
@@ -24,13 +30,18 @@ jobs:
     steps:
       - name: Ping Supabase REST API
         env:
-          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxY3Ftb3Zza3BveXV0ZnlzbHltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMTAyNTksImV4cCI6MjA5NTc4NjI1OX0.QpySvysSF1vTGu1k-X9OIr9ZwEZAcuEqQpacx3XZdns
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
           set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "::error::SUPABASE_URL / SUPABASE_ANON_KEY repository variables are not set. See the comments in this workflow file." >&2
+            exit 1
+          fi
           status=$(curl -s -o /dev/null -w '%{http_code}' \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "https://sqcqmovskpoyutfyslym.supabase.co/rest/v1/rankings?select=position&limit=1")
+            "$SUPABASE_URL/rest/v1/rankings?select=position&limit=1")
           echo "Supabase keep-alive ping returned HTTP $status"
           if [ "$status" != "200" ]; then
             echo "::error::Keep-alive ping failed (HTTP $status) — project may be paused." >&2
