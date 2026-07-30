@@ -1,100 +1,144 @@
-# Top of the Falls — Setup Guide
+# Top of the Falls (Carl's instance) — Setup Guide
 
-This guide points at the Supabase project, GitHub repo, and Vercel app connected to the live TOF white-label app.
+Provisioning runbook for **Carl Higgins' own deployment** of Top of the Falls.
+Same league as the upstream app, separate infrastructure.
 
-## Connected production resources
+Read `PROJECT_BOUNDARIES.md` before running anything here. The upstream app is
+live; nothing in this guide may target it.
+
+## Connected resources
 
 - **Customer/league:** Top of the Falls / Great Falls, MT
-- **Local checkout:** `C:/Users/chase/tof-app`
-- **GitHub repo:** `cdalin1985/TOF`
+- **League operator:** Carl Higgins (`cj_higgins@msn.com`) — sole `super_admin`
+- **Local checkout:** `C:/Users/cdali/Downloads/Topofthefalls`
+- **GitHub repo:** `TopFalls/Topofthefalls`
 - **GitHub production branch:** `main`
-- **Vercel project:** `tof-app` (`prj_aLBKEgmOlGbbCcrq4PhDAUVwp80e`)
-- **Vercel team/org:** `cdalin-projects` / `team_JIGWMVABx7X7cCpDMuWcujgZ`
-- **Production URL:** `https://tof-app-theta.vercel.app`
-- **Supabase project name:** `TOF`
-- **Supabase project ref:** `sqcqmovskpoyutfyslym`
-- **Supabase URL:** `https://sqcqmovskpoyutfyslym.supabase.co`
+- **Vercel project:** _not yet provisioned_
+- **Vercel team/org:** _not yet determined_
+- **Production URL:** _pending first deploy — Vercel default `*.vercel.app`, no custom domain_
+- **Supabase project name:** _not yet provisioned_
+- **Supabase project ref:** _not yet provisioned_
+- **Supabase URL:** _not yet provisioned_
 
-TOC.Monster is separate:
+Fill these in as each is created. Do not substitute values from the upstream
+TOF app or from TOC.Monster — see `PROJECT_BOUNDARIES.md` for both.
 
-- **TOC GitHub repo:** `cdalin1985/claude-agent0toc`
-- **TOC Vercel project:** `toc-app`
-- **TOC production URL:** `https://toc.monster`
-- **TOC local checkout:** `C:/Users/chase/toc-monster-app`
+## Stack
 
-Do not point TOF work at TOC.Monster's Vercel project, GitHub repo, Supabase project, or local checkout.
+Vite + React SPA. Not Next.js.
+
+- Install command: `npm install`
+- Build command: `npm run build` (`tsc -b && vite build`)
+- Output directory: `dist`
+- Vercel framework preset: **Vite**
 
 ## Local development
 
 ```bash
-cd /c/Users/chase/tof-app
+cd /c/Users/cdali/Downloads/Topofthefalls
 npm install
 npm run build
 npm run test
 npm run preview -- --port 4173 --host 127.0.0.1
 ```
 
-## Database migrations
+`npm run dev` and `npm run preview` require `.env` with this instance's own
+Supabase values (see below). There is deliberately no fallback project — the app
+throws at startup if they are missing, rather than silently using another
+league's database.
 
-Migrations live in `supabase/migrations/` as timestamp-named files.
+```
+VITE_SUPABASE_URL=https://<this-instance-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<this-instance-anon-key>
+```
 
-Release hardening guardrail to keep visible in this checklist: `20260519110000_release_hardening_guardrails.sql`.
+## Provisioning checklist
 
-For the existing TOF Supabase project:
+### 1. Supabase project
+
+Create the project (or gain access to Carl's existing one), then:
 
 ```bash
-cd /c/Users/chase/tof-app
-npx supabase link --project-ref sqcqmovskpoyutfyslym
+cd /c/Users/cdali/Downloads/Topofthefalls
+npx supabase login
+npx supabase link --project-ref <this-instance-ref>
 npx supabase db push --linked
 ```
 
-For a fresh replacement project, apply every migration in timestamp order with `npx supabase db push` after linking the new ref, then seed/configure TOF roster data intentionally. Do not reuse TOC.Monster production data.
+`supabase/config.toml` still carries the upstream `project_id` and `site_url`.
+Update both before running `npx supabase config push`:
 
-## Edge functions
+- `project_id` → this instance's ref
+- `[auth] site_url` and `additional_redirect_urls` → this instance's Vercel URL
 
-Deploy TOF functions to the TOF project only:
+Migrations live in `supabase/migrations/` as timestamp-named files and run in
+timestamp order. They include the 117-player roster seed
+(`20260609141000_seed_tof_roster.sql`) and the admin bootstrap
+(`20260729120000_league_admin_bootstrap.sql`, which makes `cj_higgins@msn.com`
+the sole `super_admin`).
+
+Release hardening guardrail to keep visible in this checklist:
+`20260519110000_release_hardening_guardrails.sql`.
+
+### 2. Edge functions
+
+Eleven functions must be deployed for the app to work — the claim flow, all
+challenge and match handling, treasury, and push all live here.
 
 ```bash
-cd /c/Users/chase/tof-app
-npx supabase functions deploy claim-player --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy create-challenge --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy respond-to-challenge --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy update-match-score --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy submit-result --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy resolve-dispute --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy manage-treasury --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy rank1-compliance --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy add-player --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy send-push --project-ref sqcqmovskpoyutfyslym
-npx supabase functions deploy set-player-active --project-ref sqcqmovskpoyutfyslym
+cd /c/Users/cdali/Downloads/Topofthefalls
+for fn in claim-player create-challenge respond-to-challenge update-match-score \
+          submit-result resolve-dispute manage-treasury rank1-compliance \
+          add-player send-push set-player-active; do
+  npx supabase functions deploy "$fn" --project-ref <this-instance-ref>
+done
 ```
 
-## Vercel deploys
+### 3. Vercel project
 
-The TOF Vercel project is Git-linked:
+Link the project to `TopFalls/Topofthefalls`, branch `main`, framework Vite.
 
-- Repo: `cdalin1985/TOF`
-- Branch: `main`
-- Framework: Vite
-- Install command: `npm install`
-- Build command: `npm run build`
-- Output directory: `dist`
+Set these environment variables in **Production, Preview and Development**
+scopes — all three, or preview deploys will throw at startup:
 
-A push to `main` triggers a Vercel production deployment.
+| Variable | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://<this-instance-ref>.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | this instance's anon public key |
+
+Optional, only if the corresponding feature is used:
+
+| Variable | Purpose |
+|---|---|
+| `VITE_VAPID_PUBLIC_KEY` | web push (currently wired but disabled) |
+| `VITE_PAYPAL_URL` / `VITE_CASH_APP_URL` / `VITE_VENMO_URL` | treasury payment links |
+
+Verify no variable contains `sqcqmovskpoyutfyslym`. A push to `main` then
+triggers a production deployment.
+
+### 4. Keep-alive workflow
+
+`.github/workflows/keepalive.yml` is dispatch-only until configured. Free-tier
+Supabase projects pause after ~7 days idle. To enable, set repository variables
+`SUPABASE_URL` and `SUPABASE_ANON_KEY` to this instance's values and restore the
+`schedule:` trigger documented in that file.
 
 ## Auth and admin notes
 
 - Member login is email → 6-digit code.
 - Claiming a player row is separate from admin role.
-- Carl Higgins can be `super_admin` before claiming the `Carl Higgins` roster row.
-- Members should claim their own unclaimed roster name after first login.
+- Carl Higgins is `super_admin` before claiming the `Carl Higgins` roster row.
+- Members claim their own unclaimed roster name after first login.
+- The upstream signup triggers granted admin to four personal emails unrelated to
+  this league. `20260729120000_league_admin_bootstrap.sql` removes them. If a
+  developer break-glass admin is wanted here, add it deliberately.
 
-## TOF league settings snapshot
+## League settings snapshot
 
-Current live TOF settings:
+Same as upstream — this is the same league:
 
 - Venues: `Silver Spur`, `Lido`, `Black Eagle Country Club`
-- Disciplines: `8 Ball`, `9 Ball`, `10 Ball`, `Saratoga`
+- Disciplines: `8 Ball`, `9 Ball`, `10 Ball`, `Saratoga` (Top 20 only)
 - Minimum race: `6`
 - No maximum race configured (`max_race = null`)
 - Challenge range: `2`

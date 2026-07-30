@@ -4,26 +4,37 @@
 
 TOF is a live challenge league app where players compete for position on a single ranked list. Players challenge above them, matches update the ladder, and admins can manage the day-to-day operation without running the list from a spreadsheet.
 
-This repo is the dedicated Top of the Falls white-label app. It is separate from TOC 1 / `toc1` and should not mutate the live TOC 1 app or database.
+This repo is **Carl Higgins' own instance** of the Top of the Falls app — the same league on infrastructure Carl owns. It is separate from the upstream TOF deployment and from TOC 1 / `toc1`, and must not mutate either.
 
 ```text
-TOF repo:      https://github.com/cdalin1985/TOF
-TOF Vercel:    tof-app / https://tof-app-theta.vercel.app
-TOF Supabase:  TOF / sqcqmovskpoyutfyslym
-TOC 1 repo:    https://github.com/cdalin1985/claude-agent0toc
-TOC 1 live:    https://toc.monster
-TOF customer:  Top of the Falls / Great Falls, MT
+This instance:  https://github.com/TopFalls/Topofthefalls
+  Vercel:       not yet provisioned
+  Supabase:     not yet provisioned
+  Operator:     Carl Higgins / cj_higgins@msn.com
+
+Upstream TOF:   https://github.com/cdalin1985/TOF
+  Vercel:       tof-app / https://tof-app-theta.vercel.app
+  Supabase:     TOF / sqcqmovskpoyutfyslym
+
+TOC 1 repo:     https://github.com/cdalin1985/claude-agent0toc
+TOC 1 live:     https://toc.monster
+
+Customer:       Top of the Falls / Great Falls, MT
 ```
+
+See `PROJECT_BOUNDARIES.md` — the upstream app is live and shares this league's
+roster, so pointing this instance at its database is the failure mode to avoid.
 
 ---
 
 ## Current Status
 
-- Built from the hardened TOC 1 production baseline.
+- Built from the hardened TOC 1 production baseline, cloned from the upstream TOF app.
 - Customized for Top of the Falls / Great Falls branding and rules.
 - Includes an emerald/gold `emerald-forest` theme.
-- Has its own dedicated Supabase project (`sqcqmovskpoyutfyslym`) with the TOF roster seeded.
-- Is deployed through the Git-linked Vercel project `tof-app` from the `main` branch.
+- **Supabase project: not yet provisioned.** Migrations, including the 117-player roster seed, are ready to run against it.
+- **Vercel project: not yet provisioned.** Will deploy from the `main` branch once Git-linked.
+- Carl Higgins is seeded as the sole `super_admin` (`20260729120000_league_admin_bootstrap.sql`).
 - Includes a localhost-only review mode for non-production review/demo screens.
 
 Safe local review URLs after starting preview:
@@ -54,7 +65,9 @@ Challenge movement is customized for TOF:
 - Top 11 may challenge 1 spot up.
 - Only #11 and #12 may challenge #10.
 - Spots 12+ may challenge up to 2 spots.
-- Rank #1 may challenge down to top 5 to fulfill obligation.
+- There is **no** rank #1 obligation. The TOC 1 baseline forced #1 to play two
+  top-5 opponents within 30 days or be demoted; `20260615120000_tof_remove_rank1_obligation.sql`
+  neutralizes it because the Top of the Falls ruleset has no such rule.
 
 ---
 
@@ -79,9 +92,17 @@ node --test test/*.test.mjs
 
 ## Supabase Separation Rule
 
-TOF must use its own Supabase project. Do **not** seed or edit TOC 1 / `toc1` while working on TOF or other white-label tasks.
+This instance must use its own Supabase project. Do **not** seed or edit the
+upstream TOF project (`sqcqmovskpoyutfyslym`) or TOC 1 / `toc1` while working here.
 
-The TOF database should start clean — feature parity with TOC 1 schema/functions, but without TOC 1's existing challenges, matches, or league history.
+This database should start clean — feature parity with the upstream schema and
+functions, plus this league's roster, but **none** of the upstream instance's
+existing challenges, matches, treasury entries, or league history. The roster is
+seeded from a migration in this repo, never exported from a live project.
+
+There is deliberately no fallback Supabase project in `src/lib/supabase.ts`. If
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are unset the app throws at
+startup, rather than silently connecting to another league's database.
 
 ---
 
