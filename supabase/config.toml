@@ -13,6 +13,11 @@ additional_redirect_urls = [
   "http://localhost:4173",
 ]
 
+[auth.rate_limit]
+# Custom SMTP defaults to 30 new users/hour, which a single Facebook
+# announcement to a 117-player roster would blow straight through.
+email_sent = 100
+
 [auth.email]
 enable_signup = true
 enable_confirmations = false
