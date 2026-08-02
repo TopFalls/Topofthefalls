@@ -19,6 +19,21 @@ enable_confirmations = false
 # Members sign in with a 6-digit emailed code (no password, no link).
 otp_length = 6
 otp_expiry = 3600
+# Minimum gap between sign-in emails to the SAME address. Declared explicitly
+# because the CLI otherwise materializes its own default of 1s, which lets one
+# player mashing "Send Sign-In Code" burn the project-wide hourly email quota
+# for the whole league. 60s matches the Supabase platform default.
+max_frequency = "60s"
+
+# NOTE: the two templates below cannot be pushed while this project is on the
+# free tier using Supabase's built-in email provider — `supabase config push`
+# returns 400 "Email template modification is not available for free tier
+# projects using the default email provider". They are kept here as the intended
+# config; configure custom SMTP (Authentication -> Emails -> SMTP Settings),
+# then `npx supabase config push` applies them.
+#
+# Until then players receive Supabase's stock magic-LINK email, which contains
+# no {{ .Token }}, while the app UI asks for a 6-digit code.
 
 # Sign-in code email: show the 6-digit token instead of a magic link.
 [auth.email.template.magic_link]
