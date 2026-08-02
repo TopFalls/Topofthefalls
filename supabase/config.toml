@@ -1,14 +1,14 @@
-# Supabase project config for TOF (Top of the Falls).
+# Supabase project config for Carl's Top of the Falls instance.
 # Pushed to the linked cloud project with: npx supabase config push
 # Only the sections declared here are diffed/pushed.
 
-project_id = "sqcqmovskpoyutfyslym"
+project_id = "dpbgdisezxlttwrxqanu"
 
 [auth]
-site_url = "https://tof-app-theta.vercel.app"
+site_url = "https://topofthefalls.vercel.app"
 additional_redirect_urls = [
-  "https://tof-app-theta.vercel.app",
-  "https://tof-app-theta.vercel.app/**",
+  "https://topofthefalls.vercel.app",
+  "https://topofthefalls.vercel.app/**",
   "http://localhost:5173",
   "http://localhost:4173",
 ]

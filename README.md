@@ -8,8 +8,9 @@ This repo is **Carl Higgins' own instance** of the Top of the Falls app — the 
 
 ```text
 This instance:  https://github.com/TopFalls/Topofthefalls
-  Vercel:       not yet provisioned
-  Supabase:     not yet provisioned
+  Live:         https://topofthefalls.vercel.app
+  Vercel:       topofthefalls / team tof2
+  Supabase:     dpbgdisezxlttwrxqanu (org "Top of the Falls")
   Operator:     Carl Higgins / cj_higgins@msn.com
 
 Upstream TOF:   https://github.com/cdalin1985/TOF
@@ -32,8 +33,8 @@ roster, so pointing this instance at its database is the failure mode to avoid.
 - Built from the hardened TOC 1 production baseline, cloned from the upstream TOF app.
 - Customized for Top of the Falls / Great Falls branding and rules.
 - Includes an emerald/gold `emerald-forest` theme.
-- **Supabase project: not yet provisioned.** Migrations, including the 117-player roster seed, are ready to run against it.
-- **Vercel project: not yet provisioned.** Will deploy from the `main` branch once Git-linked.
+- **Supabase project: live** (`dpbgdisezxlttwrxqanu`) — all migrations applied, 117-player roster seeded, 11 edge functions deployed.
+- **Vercel project: live** at `https://topofthefalls.vercel.app`. Not yet Git-linked (Vercel GitHub App pending on the `TopFalls` org); deploy via `npx vercel deploy --prod` until then.
 - Carl Higgins is seeded as the sole `super_admin` (`20260729120000_league_admin_bootstrap.sql`).
 - Includes a localhost-only review mode for non-production review/demo screens.
 

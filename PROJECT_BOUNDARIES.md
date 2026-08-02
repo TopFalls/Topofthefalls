@@ -15,9 +15,9 @@ alike, so it is easy to point one at the other's database by accident.
 - Local checkout: `C:/Users/cdali/Downloads/Topofthefalls`
 - Package name: `tof-app`
 - Production branch: `main`
-- Vercel project: **NOT YET PROVISIONED**
-- Supabase project/ref: **NOT YET PROVISIONED**
-- Public URL: pending first deploy (Vercel default `*.vercel.app`)
+- Vercel project: `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`), team `tof2`
+- Supabase project/ref: `dpbgdisezxlttwrxqanu` (org `Top of the Falls`)
+- Public URL: `https://topofthefalls.vercel.app`
 
 ## Original TOF app (Chase's) — separate, do not touch
 

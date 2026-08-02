@@ -13,12 +13,12 @@ into the original app's resources.
 - Local checkout: `C:/Users/cdali/Downloads/Topofthefalls`
 - GitHub repo: `TopFalls/Topofthefalls`
 - Production branch: `main`
-- Vercel project: **NOT YET PROVISIONED** — do not assume one
-- Supabase project/ref: **NOT YET PROVISIONED** — do not assume one
-- Public URL: pending first deploy (Vercel default `*.vercel.app`; no custom domain)
+- Vercel project: `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`), team `Totf` / `tof2` (`team_TiDDLGgPBC8TlMQKmrNcFNl8`)
+- Supabase project/ref: `dpbgdisezxlttwrxqanu`, org `Top of the Falls` (`qlsdgysivqxpigttcaon`)
+- Supabase URL: `https://dpbgdisezxlttwrxqanu.supabase.co`
+- Public URL: `https://topofthefalls.vercel.app` (no custom domain)
 
-Anything marked NOT YET PROVISIONED must be filled in from the real project once
-it exists. Never substitute a value from one of the apps listed below.
+Never substitute a value from one of the apps listed below.
 
 ## Boundary rule
 
@@ -27,7 +27,7 @@ one. Never point it at the other two.
 
 | App | GitHub | Vercel | Supabase | URL |
 |---|---|---|---|---|
-| **This instance (Carl's)** | `TopFalls/Topofthefalls` | pending | pending | pending |
+| **This instance (Carl's)** | `TopFalls/Topofthefalls` | `topofthefalls` (team `tof2`) | `dpbgdisezxlttwrxqanu` | `topofthefalls.vercel.app` |
 | Original TOF app (Chase's) | `cdalin1985/TOF` | `tof-app` | `sqcqmovskpoyutfyslym` | `tof-app-theta.vercel.app` |
 | TOC.Monster / Top of the Capital | `cdalin1985/claude-agent0toc` | `toc-app` | `toc1` | `toc.monster` |
 

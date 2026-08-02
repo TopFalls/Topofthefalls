@@ -13,15 +13,21 @@ live; nothing in this guide may target it.
 - **Local checkout:** `C:/Users/cdali/Downloads/Topofthefalls`
 - **GitHub repo:** `TopFalls/Topofthefalls`
 - **GitHub production branch:** `main`
-- **Vercel project:** _not yet provisioned_
-- **Vercel team/org:** _not yet determined_
-- **Production URL:** _pending first deploy — Vercel default `*.vercel.app`, no custom domain_
-- **Supabase project name:** _not yet provisioned_
-- **Supabase project ref:** _not yet provisioned_
-- **Supabase URL:** _not yet provisioned_
+- **Vercel project:** `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`)
+- **Vercel team/org:** `Totf` / `tof2` (`team_TiDDLGgPBC8TlMQKmrNcFNl8`)
+- **Production URL:** `https://topofthefalls.vercel.app` (no custom domain)
+- **Supabase project name:** `cj_higgins@msn.com` (org `Top of the Falls`)
+- **Supabase project ref:** `dpbgdisezxlttwrxqanu`
+- **Supabase URL:** `https://dpbgdisezxlttwrxqanu.supabase.co`
 
-Fill these in as each is created. Do not substitute values from the upstream
-TOF app or from TOC.Monster — see `PROJECT_BOUNDARIES.md` for both.
+Do not substitute values from the upstream TOF app or from TOC.Monster — see
+`PROJECT_BOUNDARIES.md` for both.
+
+Deployment note: the Vercel project is **not yet Git-linked** — the Vercel
+GitHub App is not installed on the `TopFalls` org, so pushes to `main` do not
+auto-deploy. Deploy with `npx vercel deploy --prod` from this checkout until
+Carl installs the app (Vercel dashboard → Project → Settings → Git → Connect),
+after which `npx vercel git connect` completes the link.
 
 ## Stack
 
