@@ -7,12 +7,16 @@ import { callEdgeFunction, edgeErrorMessage } from '../../lib/edgeFunctions';
 import { GlassCard } from '../GlassCard';
 import { Button } from '../Button';
 import { AdminQueryError } from './AdminShared';
+import { StatsResetButtons } from './StatsResetControls';
 import type { Player } from '../../types/database';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function PlayersTab() {
   const qc = useQueryClient();
+  // Which player's stats-reset panel is expanded, if any.
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [resetBanner, setResetBanner] = useState('');
   const { data: players = [], isError, refetch } = useQuery<Player[]>({
     queryKey: ['admin-players'],
     queryFn: async () => unwrapList(await supabase.from('players').select('*').order('full_name')),
@@ -189,10 +193,17 @@ export function PlayersTab() {
         ))}
       </div>
 
+      {resetBanner && (
+        <p className="text-[#22C55E] text-xs font-[Barlow]">
+          {resetBanner} Undo is available on the Settings tab.
+        </p>
+      )}
+
       <p className="text-[#9CA3AF] text-xs font-[Barlow]">{filteredPlayers.length} {filter === 'all' ? 'total' : filter} players</p>
       {filteredPlayers.map((p) => {
         const fr = fargoByPlayer.get(p.id);
         const isInviting = invitingId === p.id;
+        const isResetting = resettingId === p.id;
         return (
           <GlassCard key={p.id} className="p-3">
             <div className="flex items-center gap-3">
@@ -212,11 +223,27 @@ export function PlayersTab() {
                   Invite
                 </button>
               )}
+              {!isResetting && (
+                <button
+                  onClick={() => { setResettingId(p.id); setResetBanner(''); }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-medium transition-colors bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30">
+                  Stats
+                </button>
+              )}
               <button onClick={() => toggleActive(p)} disabled={activeToggling === p.id}
                 className={`px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${p.is_active ? 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30' : 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30'}`}>
                 {activeToggling === p.id ? 'Saving…' : p.is_active ? 'Deactivate' : 'Activate'}
               </button>
             </div>
+            {isResetting && (
+              <div className="mt-3">
+                <StatsResetButtons
+                  scope={{ playerId: p.id, playerName: p.full_name }}
+                  onCancel={() => setResettingId(null)}
+                  onDone={() => { setResettingId(null); setResetBanner(`${p.full_name}'s stats were reset.`); }}
+                />
+              </div>
+            )}
             {isInviting && (
               <div className="mt-3 space-y-2">
                 <input

@@ -47,14 +47,21 @@ export default function PlayerPage() {
     ? canChallenge(myRanking.ranking.position, targetRanking.ranking.position)
     : false;
 
+  // When an admin resets stats with "hide past matches", player_season_stats
+  // carries a stats_reset_at stamp. Match History must respect it, or the
+  // profile shows 0 wins directly above a list of wins.
+  const statsResetAt = targetRanking?.stats?.stats_reset_at ?? null;
+
   const { data: matches = [], isLoading: matchesLoading, isError: matchesError, refetch: refetchMatches } = useQuery<Match[]>({
-    queryKey: ['player-matches', id],
+    queryKey: ['player-matches', id, statsResetAt],
     queryFn: async () => {
-      return unwrapList(await supabase
+      let query = supabase
         .from('matches')
         .select('*')
         .or(`player1_id.eq.${id},player2_id.eq.${id}`)
-        .in('status', ['confirmed', 'resolved'])
+        .in('status', ['confirmed', 'resolved']);
+      if (statsResetAt) query = query.gt('completed_at', statsResetAt);
+      return unwrapList(await query
         .order('completed_at', { ascending: false })
         .limit(20));
     },

@@ -188,6 +188,7 @@ export function getTopOfTheFallsDemoRankings(): RankedPlayer[] {
         forfeit_wins: 0,
         forfeits: 0,
         best_rank_achieved: position,
+        stats_reset_at: null,
         updated_at: nowIso(),
       },
     };

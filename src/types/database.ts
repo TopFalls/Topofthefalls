@@ -164,6 +164,8 @@ export interface Database {
           forfeit_wins: number;
           forfeits: number;
           best_rank_achieved: number | null;
+          /** Set when an admin resets stats and chooses to hide past matches. */
+          stats_reset_at: string | null;
           updated_at: string;
         };
         Insert: {
@@ -181,6 +183,7 @@ export interface Database {
           forfeit_wins?: number;
           forfeits?: number;
           best_rank_achieved?: number | null;
+          stats_reset_at?: string | null;
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['player_season_stats']['Insert']>;

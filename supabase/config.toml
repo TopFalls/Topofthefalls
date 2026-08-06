@@ -30,20 +30,28 @@ otp_expiry = 3600
 # for the whole league. 60s matches the Supabase platform default.
 max_frequency = "60s"
 
-# Custom SMTP (Resend). Required, not optional: on the built-in email provider
+# Custom SMTP (Brevo). Required, not optional: on the built-in email provider
 # Supabase rejects template modification with a 400, so players would receive a
 # stock magic-LINK email with no {{ .Token }} while the app asks for a 6-digit
 # code — and the built-in sender's hourly cap cannot be raised.
 #
-# The API key is read from the RESEND_API_KEY environment variable and is never
-# committed. Set it with: setx RESEND_API_KEY "re_..."
+# Was Resend, swapped to Brevo: Resend's shared onboarding@resend.dev sender
+# only delivers to the Resend account owner, so every player except Chase got
+# SMTP 550 "You can only send testing emails to your own email address".
+# Brevo allows a single verified sender without owning a domain.
+#
+# The SMTP key is read from the BREVO_SMTP_KEY environment variable and is never
+# committed. Set it with: setx BREVO_SMTP_KEY "..."
+#
+# admin_email MUST be an address verified at https://app.brevo.com/senders/list
+# or Brevo rejects the send.
 [auth.email.smtp]
 enabled = true
-host = "smtp.resend.com"
-port = 465
-user = "resend"
-pass = "env(RESEND_API_KEY)"
-admin_email = "onboarding@resend.dev"
+host = "smtp-relay.brevo.com"
+port = 587
+user = "b438f2001@smtp-brevo.com"
+pass = "env(BREVO_SMTP_KEY)"
+admin_email = "cj_higgins@msn.com"
 sender_name = "Top of the Falls"
 
 # Sign-in code email: show the 6-digit token instead of a magic link.

@@ -5,6 +5,7 @@ import { unwrap } from '../../lib/supabaseResult';
 import { GlassCard } from '../GlassCard';
 import { Button } from '../Button';
 import { AdminQueryError } from './AdminShared';
+import { LeagueStatsResetCard } from './StatsResetControls';
 import type { LeagueSettings } from '../../types/database';
 
 type SettingsFormState = {
@@ -129,6 +130,8 @@ export function SettingsTab() {
       <Button variant="primary" fullWidth loading={saving} disabled={!isDirty || hasBlankField} onClick={handleSave}>
         {saved ? '✓ Saved' : 'Save Settings'}
       </Button>
+
+      <LeagueStatsResetCard />
     </div>
   );
 }
