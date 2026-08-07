@@ -13,9 +13,14 @@ import { Button } from '../Button';
  *   keepHistory = true   zero the counters, leave Match History listing every
  *                        past match. For fixing a bad stat.
  *   keepHistory = false  zero the counters AND stamp stats_reset_at, so the
- *                        app hides matches completed before the reset. For a
- *                        new season — otherwise a player sees "0 Wins" sitting
- *                        directly above a list of matches they won.
+ *                        app hides matches completed before the reset. For
+ *                        starting the list fresh — otherwise a player sees
+ *                        "0 Wins" sitting directly above a list of matches
+ *                        they won.
+ *
+ * Note: this league runs continuously — there are no seasons. Avoid season
+ * framing in anything player- or admin-facing. The player_season_stats table
+ * name is inherited from upstream and is not renamed.
  *
  * Matches are never deleted. Ladder positions are never touched (admins
  * reorder the ladder directly on the Rankings tab).
@@ -131,7 +136,7 @@ export function StatsResetButtons({ scope, onDone, onCancel }: ResetButtonsProps
         >
           Reset stats — hide past matches
           <span className="block text-[#9CA3AF] font-normal mt-0.5">
-            Starts a clean season. Old matches are kept in the records but no
+            Starts the list fresh. Old matches are kept in the records but no
             longer shown on profiles.
           </span>
         </button>

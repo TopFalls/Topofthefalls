@@ -371,7 +371,7 @@ export default function HomePage() {
                 <BarChart3 size={16} className="text-[#9CA3AF]" />
                 <span className="font-[Barlow] font-semibold text-[#E8E2D6] text-sm">League Stats</span>
               </div>
-              <div className="text-[#6B7280] text-xs font-[Barlow]">Admin · season totals, discipline &amp; venue breakdowns, leaders</div>
+              <div className="text-[#6B7280] text-xs font-[Barlow]">Admin · league totals, discipline &amp; venue breakdowns, leaders</div>
             </GlassCard>
           )}
         </div>

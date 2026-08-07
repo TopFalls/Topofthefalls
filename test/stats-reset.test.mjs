@@ -148,3 +148,44 @@ test('league-wide reset demands a typed confirmation', () => {
   assert.match(resetControls, /const needsTypedConfirm = isLeague/);
   assert.match(resetControls, /toUpperCase\(\) === 'RESET'/);
 });
+
+// --- League terminology ---------------------------------------------------
+
+test('no user-facing copy calls this a season', () => {
+  // These leagues run continuously — no season start, end or rollover. The
+  // player_season_stats table name is inherited from upstream and stays, but
+  // nothing a player or admin reads should say "season".
+  const allowed = [
+    'player_season_stats',   // table name, written by edge functions
+    'PlayerSeasonStats',     // its TS type
+    'seasonStats',           // local variable derived from that table
+    'season_snapshot',       // stats_reset_events column
+    'there are no seasons',  // the comment explaining this rule
+    'Avoid season',          // ditto
+  ];
+
+  const uiFiles = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(rel);
+      else if (entry.name.endsWith('.tsx')) uiFiles.push(rel);
+    }
+  };
+  walk('src');
+
+  const offenders = [];
+  for (const file of uiFiles) {
+    for (const [index, line] of read(file).split('\n').entries()) {
+      if (!/season/i.test(line)) continue;
+      if (allowed.some((token) => line.includes(token))) continue;
+      offenders.push(`${file}:${index + 1}: ${line.trim()}`);
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `these leagues have no seasons — reword:\n${offenders.join('\n')}`,
+  );
+});

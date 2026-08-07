@@ -68,6 +68,16 @@ defaults (identical to the upstream app — this is the same league):
 - Carl Higgins is super_admin before claiming his player row
   (`20260729120000_league_admin_bootstrap.sql`)
 - Treasury is a ledger/admin function; no real payment processing is live yet
+- **The league runs continuously — there are no seasons.** No season start, no
+  offseason, no rollover; the challenge list is always live. Never use season
+  framing in UI copy, admin labels, emails or customer docs — say "the list" or
+  "clearing the board". The `player_season_stats` table name is inherited from
+  upstream and must not be renamed (edge functions and types depend on it), but
+  nothing user-facing should say "season".
+- Admins can reset stats per player or league-wide
+  (`20260806121000_admin_stats_reset.sql`), in two modes: keep match history, or
+  hide pre-reset matches via `stats_reset_at`. Snapshots to `stats_reset_events`
+  allow one-click undo. Rankings are never touched by a reset.
 
 The upstream signup triggers hardcoded four personal admin emails. Those are
 demoted here and must not come back — Carl is the sole super_admin on this
