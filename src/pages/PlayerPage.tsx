@@ -17,7 +17,7 @@ import { QueryError } from '../components/QueryError';
 import { formatDate } from '../utils/time';
 import type { Match, PlayerDisciplineStats } from '../types/database';
 import { LEAGUE, type LeagueDiscipline } from '../config/league';
-import { canChallenge } from '../lib/ladder';
+import { activeRankByPosition, canChallengeOnLadder } from '../lib/ladder';
 
 type Discipline = LeagueDiscipline;
 const DISCIPLINES = LEAGUE.disciplines.map((d) => d.value) as Discipline[];
@@ -35,7 +35,7 @@ type HistoryFilter = 'All' | 'Wins' | 'Losses' | Discipline;
 export default function PlayerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { player: myPlayer } = useAuthStore();
+  const { player: myPlayer, profile } = useAuthStore();
   const { data: rankings = [] } = useRankings();
   const [discTab, setDiscTab]         = useState<Discipline>('8 Ball');
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('All');
@@ -43,8 +43,20 @@ export default function PlayerPage() {
   const targetRanking = rankings.find((r) => r.player.id === id);
   const myRanking     = rankings.find((r) => r.player.id === myPlayer?.id);
 
+  // Records belong to the player they describe: you see your own, admins see
+  // everyone's, nobody else sees anything. RLS enforces this on the stats and
+  // matches tables — the checks here only keep empty cards off the screen.
+  const isSelf     = !!myPlayer && myPlayer.id === id;
+  const isAdmin    = !!profile && ['admin', 'super_admin'].includes(profile.role);
+  const canSeeStats = isSelf || isAdmin;
+
+  // Inactive players are skipped by the challenge rules — see src/lib/ladder.ts.
+  const activeRanks = activeRankByPosition(
+    rankings.map((r) => ({ position: r.ranking.position, isActive: r.player.is_active })),
+  );
+
   const eligible = myRanking && targetRanking
-    ? canChallenge(myRanking.ranking.position, targetRanking.ranking.position)
+    ? canChallengeOnLadder(myRanking.ranking.position, targetRanking.ranking.position, activeRanks)
     : false;
 
   // When an admin resets stats with "hide past matches", player_season_stats
@@ -76,7 +88,7 @@ export default function PlayerPage() {
         .select('*')
         .eq('player_id', id));
     },
-    enabled: !!id,
+    enabled: !!id && canSeeStats,
   });
 
   if (!targetRanking) {
@@ -138,19 +150,27 @@ export default function PlayerPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-4 gap-2 mt-6 pt-4 border-t border-white/5">
-            {[
-              { label: 'Wins',   value: stats?.wins ?? 0,     color: '#22C55E' },
-              { label: 'Losses', value: stats?.losses ?? 0,   color: '#EF4444' },
-              { label: 'Streak', value: stats?.current_streak ?? 0, color: (stats?.current_streak ?? 0) > 0 ? '#22C55E' : '#9CA3AF' },
-              { label: 'Win %',  value: `${overallWinPct}%`,  color: '#E8E2D6' },
-            ].map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="font-[Azeret_Mono] font-bold text-lg" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-[#6B7280] text-[10px] font-[Barlow] mt-1 uppercase">{s.label}</div>
-              </div>
-            ))}
-          </div>
+          {canSeeStats ? (
+            <div className="grid grid-cols-4 gap-2 mt-6 pt-4 border-t border-white/5">
+              {[
+                { label: 'Wins',   value: stats?.wins ?? 0,     color: '#22C55E' },
+                { label: 'Losses', value: stats?.losses ?? 0,   color: '#EF4444' },
+                { label: 'Streak', value: stats?.current_streak ?? 0, color: (stats?.current_streak ?? 0) > 0 ? '#22C55E' : '#9CA3AF' },
+                { label: 'Win %',  value: `${overallWinPct}%`,  color: '#E8E2D6' },
+              ].map((s) => (
+                <div key={s.label} className="text-center">
+                  <div className="font-[Azeret_Mono] font-bold text-lg" style={{ color: s.color }}>{s.value}</div>
+                  <div className="text-[#6B7280] text-[10px] font-[Barlow] mt-1 uppercase">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 pt-4 border-t border-white/5">
+              <p className="text-[#6B7280] text-xs font-[Barlow]">
+                Records are private. You can see your own stats on your profile.
+              </p>
+            </div>
+          )}
 
           {/* Action button */}
           {eligible && player.is_active && (
@@ -167,7 +187,8 @@ export default function PlayerPage() {
         </GlassCard>
       </motion.div>
 
-      {/* Discipline Stats */}
+      {/* Discipline Stats — own profile and admins only */}
+      {canSeeStats && (
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.35 }}>
         <GlassCard className="p-4 mb-4">
           <h2 className="font-[Bebas_Neue] text-xl text-[#E8E2D6] mb-3">Discipline Stats</h2>
@@ -212,8 +233,9 @@ export default function PlayerPage() {
           )}
         </GlassCard>
       </motion.div>
+      )}
 
-      {/* Head-to-head */}
+      {/* Head-to-head — built from the viewer's own matches, so it stays. */}
       {h2h.length > 0 && myPlayer && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14, duration: 0.35 }}>
           <GlassCard className="p-4 mb-4">
@@ -233,7 +255,8 @@ export default function PlayerPage() {
         </motion.div>
       )}
 
-      {/* Match history */}
+      {/* Match history — own profile and admins only */}
+      {canSeeStats && (
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.35 }}>
         <GlassCard className="p-4">
           <h2 className="font-[Bebas_Neue] text-xl text-[#E8E2D6] mb-3">Match History</h2>
@@ -294,6 +317,7 @@ export default function PlayerPage() {
           )}
         </GlassCard>
       </motion.div>
+      )}
     </div>
   );
 }

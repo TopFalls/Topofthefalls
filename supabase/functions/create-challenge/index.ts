@@ -20,6 +20,8 @@ async function sendPush(supabase: any, playerId: string, title: string, body: st
   }
 }
 
+// Positions here are *active ranks* — a player's place among active players,
+// with inactive players skipped. See the caller.
 function canChallenge(
   myPos: number,
   theirPos: number,
@@ -88,20 +90,42 @@ serve(async (req) => {
     if (!challenged) return new Response(JSON.stringify({ error: 'That player does not exist.' }), { status: 404, headers: corsHeaders });
     if (!challenged.is_active) return new Response(JSON.stringify({ error: 'That player is currently inactive and cannot be challenged.' }), { status: 409, headers: corsHeaders });
 
-    const [challengerRankRes, challengedRankRes] = await Promise.all([
-      supabase.from('rankings').select('position').eq('player_id', challenger.id).single(),
-      supabase.from('rankings').select('position').eq('player_id', challenged_player_id).single(),
+    // Inactive players keep their spot on the list but the challenge rules step
+    // over them, so eligibility is judged on rank among active players. The
+    // whole ladder is needed to derive that. Mirrors activeRankByPosition in
+    // src/lib/ladder.ts — keep the two in step.
+    const [ladderRes, activeRes] = await Promise.all([
+      supabase.from('rankings').select('player_id, position').order('position'),
+      supabase.from('players').select('id').eq('is_active', true),
     ]);
-    if (!challengerRankRes.data || !challengedRankRes.data) return new Response(JSON.stringify({ error: 'Could not retrieve rankings.' }), { status: 404, headers: corsHeaders });
+    if (ladderRes.error || !ladderRes.data || activeRes.error) {
+      return new Response(JSON.stringify({ error: 'Could not retrieve rankings.' }), { status: 404, headers: corsHeaders });
+    }
 
-    const myPos = challengerRankRes.data.position;
-    const theirPos = challengedRankRes.data.position;
+    const activeIds = new Set((activeRes.data ?? []).map((p: { id: string }) => p.id));
+    let myPos = 0, theirPos = 0, myRank = 0, theirRank = 0, activeRank = 0;
+    for (const row of ladderRes.data as { player_id: string; position: number }[]) {
+      const isActive = activeIds.has(row.player_id);
+      if (isActive) activeRank += 1;
+      if (row.player_id === challenger.id) {
+        myPos = row.position;
+        if (isActive) myRank = activeRank;
+      }
+      if (row.player_id === challenged_player_id) {
+        theirPos = row.position;
+        if (isActive) theirRank = activeRank;
+      }
+    }
+    if (!myPos || !theirPos) return new Response(JSON.stringify({ error: 'Could not retrieve rankings.' }), { status: 404, headers: corsHeaders });
+    if (!myRank || !theirRank) return new Response(JSON.stringify({ error: 'Inactive players cannot take part in challenges.' }), { status: 409, headers: corsHeaders });
 
     await supabase.rpc('expire_stale_challenges');
 
-    const eligibilityError = canChallenge(myPos, theirPos, challengeRange);
+    const eligibilityError = canChallenge(myRank, theirRank, challengeRange);
     if (eligibilityError) return new Response(JSON.stringify({ error: eligibilityError }), { status: 400, headers: corsHeaders });
 
+    // Saratoga stays keyed to the list position players actually see (Top 20),
+    // not active rank — it is a league eligibility rule, not a challenge window.
     if (discipline === 'Saratoga' && (myPos > 20 || theirPos > 20)) {
       return new Response(JSON.stringify({ error: 'Saratoga is only allowed when both players are ranked in the Top 20.' }), { status: 400, headers: corsHeaders });
     }

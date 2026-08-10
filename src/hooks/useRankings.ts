@@ -10,7 +10,10 @@ export function useRankings() {
       if (isTopOfTheFallsDemoMode()) return getTopOfTheFallsDemoRankings();
 
       const [playersRes, rankingsRes, metricsRes, statsRes] = await Promise.all([
-        supabase.from('players').select('*').eq('is_active', true),
+        // Inactive players stay on the list (greyed out, unchallengeable), so
+        // they must be fetched too — filtering them out here left holes in the
+        // numbering and made their profile page load forever.
+        supabase.from('players').select('*'),
         supabase.from('rankings').select('*').order('position'),
         supabase.from('player_reference_metrics').select('*'),
         supabase.from('player_season_stats').select('*'),

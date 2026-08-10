@@ -11,26 +11,36 @@ import { RankingRowSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { QueryError } from '../components/QueryError';
 import type { RankedPlayer } from '../types/database';
-import { challengeEligibility, canChallenge, type Eligibility } from '../lib/ladder';
+import {
+  activeRankByPosition,
+  challengeEligibilityOnLadder,
+  canChallengeOnLadder,
+  type Eligibility,
+} from '../lib/ladder';
 
 function RankCard({
   rp,
   myPosition,
   myPlayerId,
+  activeRanks,
   index,
   challengeMode,
 }: {
   rp: RankedPlayer;
   myPosition: number | null;
   myPlayerId: string | null;
+  activeRanks: Map<number, number>;
   index: number;
   challengeMode: boolean;
 }) {
   const navigate = useNavigate();
   const pos       = rp.ranking.position;
   const isMe      = rp.player.id === myPlayerId;
-  const isTop3    = pos <= 3;
-  const eligibility: Eligibility = myPosition !== null ? challengeEligibility(myPosition, pos) : { ok: false };
+  const isInactive = !rp.player.is_active;
+  const isTop3    = pos <= 3 && !isInactive;
+  const eligibility: Eligibility = myPosition !== null
+    ? challengeEligibilityOnLadder(myPosition, pos, activeRanks)
+    : { ok: false };
   const eligible  = eligibility.ok && !isMe;
   // In challenge mode, explain why ineligible opponents can't be challenged.
   const showReason = challengeMode && myPosition !== null && !isMe && !eligible;
@@ -49,7 +59,9 @@ function RankCard({
           'glass-card p-3 flex items-center gap-3 cursor-pointer',
           'transition-all duration-200',
           isTop3 ? 'gold-shimmer' : '',
-          showReason ? 'opacity-50' : '',
+          // Inactive players hold their spot but are visibly stood down.
+          isInactive ? 'opacity-55 grayscale' : '',
+          showReason && !isInactive ? 'opacity-50' : '',
         ].join(' ')}
         style={isMe ? { borderColor: 'var(--toc-theme-border-strong)', boxShadow: '0 0 16px var(--toc-theme-glow-soft)' } : undefined}
         onClick={() => navigate(`/player/${rp.player.id}`)}
@@ -59,7 +71,9 @@ function RankCard({
           <span
             className="font-[Azeret_Mono] font-bold text-lg"
             style={{
-              color: pos === 1 ? '#D4AF37' : pos === 2 ? '#9CA3AF' : pos === 3 ? '#CD7F32' : '#6B7280',
+              color: isInactive
+                ? '#4B5563'
+                : pos === 1 ? '#D4AF37' : pos === 2 ? '#9CA3AF' : pos === 3 ? '#CD7F32' : '#6B7280',
             }}
           >
             {pos}
@@ -72,10 +86,11 @@ function RankCard({
         {/* Name + info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-[Barlow] font-semibold text-base truncate text-[#E8E2D6]">
+            <span className={`font-[Barlow] font-semibold text-base truncate ${isInactive ? 'text-[#9CA3AF]' : 'text-[#E8E2D6]'}`}>
               {rp.player.full_name}
             </span>
             {isMe && <Badge variant="info" className="shrink-0">You</Badge>}
+            {isInactive && <Badge variant="warning" className="shrink-0 text-[10px]">Inactive</Badge>}
             {!rp.player.profile_id && <Badge variant="default" className="shrink-0 text-[10px]">Unclaimed</Badge>}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
@@ -83,7 +98,9 @@ function RankCard({
               {rp.metrics?.fargo_rating ?? 'Unrated'}
               {rp.metrics?.fargo_rating ? ' FR' : ''}
             </span>
-            {rp.stats && (
+            {/* Records are private to the player they belong to. RLS returns
+                only your own stats row, so this renders for you alone. */}
+            {isMe && rp.stats && (
               <span
                 className="text-[#6B7280] text-xs font-[Azeret_Mono]"
                 title="Wins · Losses · Forfeits"
@@ -138,16 +155,27 @@ export default function RankingsPage() {
   const myRanking = rankings.find((r) => r.player.id === player?.id);
   const myPosition = myRanking?.ranking.position ?? null;
 
+  // Inactive players keep their spot on screen but are stepped over by the
+  // challenge rules, so eligibility is judged on rank among active players.
+  const activeRanks = useMemo(
+    () => activeRankByPosition(
+      rankings.map((r) => ({ position: r.ranking.position, isActive: r.player.is_active })),
+    ),
+    [rankings],
+  );
+
+  const inactiveCount = rankings.length - activeRanks.size;
+
   const filtered = useMemo(() => {
     let list = rankings;
     if (search) list = list.filter((r) => r.player.full_name.toLowerCase().includes(search.toLowerCase()));
     if (tab === 'near' && myPosition !== null) {
       list = list.filter((r) =>
-        canChallenge(myPosition, r.ranking.position) && r.player.id !== player?.id
+        canChallengeOnLadder(myPosition, r.ranking.position, activeRanks) && r.player.id !== player?.id
       );
     }
     return list;
-  }, [rankings, search, tab, myPosition, player?.id]);
+  }, [rankings, search, tab, myPosition, player?.id, activeRanks]);
 
   return (
     <div className="min-h-screen px-4 pt-8 pb-4">
@@ -162,6 +190,7 @@ export default function RankingsPage() {
         <EKGLine className="mx-auto mt-1" />
         <p className="text-[#9CA3AF] text-xs font-[Barlow] mt-2">
           {rankings.length} players · Challenge List
+          {inactiveCount > 0 && ` · ${inactiveCount} inactive`}
         </p>
       </div>
 
@@ -221,6 +250,7 @@ export default function RankingsPage() {
                 rp={rp}
                 myPosition={myPosition}
                 myPlayerId={player?.id ?? null}
+                activeRanks={activeRanks}
                 index={i}
                 challengeMode={challengeMode}
               />

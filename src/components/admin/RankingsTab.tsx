@@ -7,7 +7,7 @@ import { GlassCard } from '../GlassCard';
 import { Button } from '../Button';
 import { AdminQueryError } from './AdminShared';
 
-type RankRow = { id: string; player_id: string; position: number; full_name: string };
+type RankRow = { id: string; player_id: string; position: number; full_name: string; is_active: boolean };
 
 export function RankingsTab() {
   const qc = useQueryClient();
@@ -16,14 +16,21 @@ export function RankingsTab() {
     queryFn: async () => {
       const [ranksRes, playersRes] = await Promise.all([
         supabase.from('rankings').select('id, player_id, position').order('position'),
-        supabase.from('players').select('id, full_name').eq('is_active', true),
+        // Inactive players keep their ladder row, and admin_reorder_rankings
+        // requires a payload covering the whole ladder — filtering them out
+        // here showed them as "Unknown" in the reorder list.
+        supabase.from('players').select('id, full_name, is_active'),
       ]);
       const ranks = unwrapList(ranksRes);
       const pls = unwrapList(playersRes);
-      return ranks.map((r) => ({
-        ...r,
-        full_name: pls.find((p) => p.id === r.player_id)?.full_name ?? 'Unknown',
-      }));
+      return ranks.map((r) => {
+        const p = pls.find((pl) => pl.id === r.player_id);
+        return {
+          ...r,
+          full_name: p?.full_name ?? 'Unknown',
+          is_active: p?.is_active ?? true,
+        };
+      });
     },
   });
 
@@ -126,8 +133,11 @@ export function RankingsTab() {
               <span className="font-[Azeret_Mono] font-bold text-lg text-[var(--toc-theme-accent)] w-7 text-center shrink-0">
                 {i + 1}
               </span>
-              <span className="font-[Barlow] font-semibold text-sm text-[#E8E2D6] flex-1 truncate">
+              <span className={`font-[Barlow] font-semibold text-sm flex-1 truncate ${r.is_active ? 'text-[#E8E2D6]' : 'text-[#9CA3AF]'}`}>
                 {r.full_name}
+                {!r.is_active && (
+                  <span className="ml-2 text-[10px] font-[Barlow] text-[#F59E0B]">INACTIVE</span>
+                )}
               </span>
               {changed && (
                 <span className="text-[#F59E0B] text-xs font-[Azeret_Mono] shrink-0">
