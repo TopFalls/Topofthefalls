@@ -307,7 +307,8 @@ export interface Database {
           min_race: number;
           max_race: number | null;
           challenge_range: number;
-          cooldown_hours: number;
+          cooldown_hours: number;        // rule 5b — after winning from below
+          loss_cooldown_hours: number;   // rule 5c — after a loss
           challenge_expiry_days: number;
           challenge_response_hours: number;
           match_play_days: number;

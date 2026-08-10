@@ -8,26 +8,28 @@ import { AdminQueryError } from './AdminShared';
 import { LeagueStatsResetCard } from './StatsResetControls';
 import type { LeagueSettings } from '../../types/database';
 
+// Every field here is read by the app. Two knobs were removed rather than left
+// on screen doing nothing: first_challenge_range, which no code has ever read,
+// and challenge_expiry_days, now superseded by challenge_response_hours (a
+// challenge expires at expires_at, which is set from the response window).
 type SettingsFormState = {
   min_race: number | '';
   challenge_range: number | '';
-  cooldown_hours: number | '';
-  challenge_expiry_days: number | '';
+  challenge_weekly_limit: number | '';
   challenge_response_hours: number | '';
   match_play_days: number | '';
-  challenge_weekly_limit: number | '';
-  first_challenge_range: number | '';
+  cooldown_hours: number | '';
+  loss_cooldown_hours: number | '';
 };
 
 const RULE_FIELDS: Array<{ key: keyof SettingsFormState; label: string; unit: string }> = [
-  { key: 'min_race', label: 'Min race length', unit: 'games' },
-  { key: 'challenge_range', label: 'Challenge range', unit: 'spots (normal)' },
-  { key: 'first_challenge_range', label: 'First challenge range', unit: 'spots (first ever)' },
+  { key: 'min_race', label: 'Min race length', unit: 'games — no maximum' },
+  { key: 'challenge_range', label: 'Challenge range', unit: 'spots up, from #13 down' },
   { key: 'challenge_weekly_limit', label: 'Weekly challenge limit', unit: 'challenges per 7 days' },
-  { key: 'challenge_response_hours', label: 'Challenge response window', unit: 'hours to accept/decline' },
+  { key: 'challenge_response_hours', label: 'Challenge response window', unit: 'hours to accept or decline' },
   { key: 'match_play_days', label: 'Match play window', unit: 'days after acceptance' },
-  { key: 'cooldown_hours', label: 'Post-match cooldown', unit: 'hours after a win' },
-  { key: 'challenge_expiry_days', label: 'Challenge expiry', unit: 'days until auto-expire' },
+  { key: 'cooldown_hours', label: 'Cooldown after moving up', unit: 'hours — winning from below' },
+  { key: 'loss_cooldown_hours', label: 'Cooldown after a loss', unit: 'hours before challenging up' },
 ];
 
 type SettingsFieldProps = {
@@ -76,12 +78,11 @@ export function SettingsTab() {
   const form: SettingsFormState = {
     min_race: edits.min_race ?? settings.min_race,
     challenge_range: edits.challenge_range ?? settings.challenge_range,
-    cooldown_hours: edits.cooldown_hours ?? settings.cooldown_hours,
-    challenge_expiry_days: edits.challenge_expiry_days ?? settings.challenge_expiry_days,
+    challenge_weekly_limit: edits.challenge_weekly_limit ?? settings.challenge_weekly_limit,
     challenge_response_hours: edits.challenge_response_hours ?? settings.challenge_response_hours,
     match_play_days: edits.match_play_days ?? settings.match_play_days,
-    challenge_weekly_limit: edits.challenge_weekly_limit ?? settings.challenge_weekly_limit,
-    first_challenge_range: edits.first_challenge_range ?? settings.first_challenge_range,
+    cooldown_hours: edits.cooldown_hours ?? settings.cooldown_hours,
+    loss_cooldown_hours: edits.loss_cooldown_hours ?? settings.loss_cooldown_hours,
   };
 
   const set = (key: keyof SettingsFormState, val: number | '') => {

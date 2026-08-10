@@ -145,8 +145,12 @@ test('treasury ledger constrains amount direction and one reversal per entry', (
   assert.match(manageTreasury, /reversal.*reversed_entry_id/s);
 });
 
-test('rank one manual enforcement only penalizes after the obligation window is overdue', () => {
-  assert.match(rank1Compliance, /enforce && overdue && !compliant/);
+test('rank one enforcement is retired — the rules carry no such obligation', () => {
+  // This used to assert the penalty only fired once the 30-day window was
+  // overdue. Carl's written rules place no obligation on the #1 player, so the
+  // endpoint answers 410 instead of enforcing. See test/league-rules.test.mjs.
+  assert.match(rank1Compliance, /410/);
+  assert.doesNotMatch(rank1Compliance, /apply_rank1_penalty/);
 });
 
 test('set-player-active writes audit and activity through service role and checks errors', () => {

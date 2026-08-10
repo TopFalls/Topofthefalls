@@ -197,47 +197,45 @@ async function recordSubmittedMatchFees(
   }
 }
 
-async function createPostLossCooldown(supabase: ReturnType<typeof createClient>, loserId: string): Promise<void> {
-  const { data: settings } = await supabase.from('league_settings').select('cooldown_hours').single();
-  const cooldownHours = settings?.cooldown_hours ?? 24;
-  if (cooldownHours <= 0) return;
-  const expiresAt = new Date(Date.now() + cooldownHours * 3600 * 1000).toISOString();
-  const { error } = await supabase.from('cooldowns').insert({ player_id: loserId, type: 'post_match', expires_at: expiresAt });
+/**
+ * Rule 5 cooldowns.
+ *
+ *   5a  defend your spot (higher seed wins)  no wait — challenge again at once
+ *   5b  win from below and move up           cooldown_hours (24)
+ *   5c  lose                                 loss_cooldown_hours (168 = 7 days)
+ *
+ * A cooldown blocks issuing a challenge and never blocks accepting one, which
+ * is exactly what "must either defend or wait" requires — create-challenge is
+ * the only caller that checks it.
+ */
+async function applyPostMatchCooldowns(
+  supabase: ReturnType<typeof createClient>,
+  loserId: string,
+  winnerId: string,
+  winnerMovedUp: boolean,
+): Promise<void> {
+  const { data: settings } = await supabase
+    .from('league_settings')
+    .select('cooldown_hours, loss_cooldown_hours')
+    .single();
+  const winHours = settings?.cooldown_hours ?? 24;
+  const lossHours = settings?.loss_cooldown_hours ?? 168;
+
+  const rows: { player_id: string; type: string; expires_at: string }[] = [];
+  const at = (hours: number) => new Date(Date.now() + hours * 3600 * 1000).toISOString();
+  if (lossHours > 0) rows.push({ player_id: loserId, type: 'post_match', expires_at: at(lossHours) });
+  if (winnerMovedUp && winHours > 0) rows.push({ player_id: winnerId, type: 'post_match', expires_at: at(winHours) });
+
+  if (rows.length === 0) return;
+  const { error } = await supabase.from('cooldowns').insert(rows);
   if (error) throw error;
 }
 
-async function checkRank1Compliance(supabase: ReturnType<typeof createClient>) {
-  const { data: rank1 } = await supabase.from('rankings').select('player_id, rank1_since').eq('position', 1).single();
-  if (!rank1 || !rank1.rank1_since) return;
-
-  const rank1Since = new Date(rank1.rank1_since);
-  const now = new Date();
-  const daysSince = (now.getTime() - rank1Since.getTime()) / (1000 * 3600 * 24);
-
-  const { data: top5 } = await supabase.from('rankings').select('player_id').gte('position', 2).lte('position', 5);
-  const top5Ids = (top5 ?? []).map((r: { player_id: string }) => r.player_id);
-  if (top5Ids.length === 0) return;
-
-  const { count: top5Matches } = await supabase
-    .from('matches')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'confirmed')
-    .gte('completed_at', rank1.rank1_since)
-    .or(`and(player1_id.eq.${rank1.player_id},player2_id.in.(${top5Ids.join(',')})),and(player2_id.eq.${rank1.player_id},player1_id.in.(${top5Ids.join(',')}))`);
-
-  const matchCount = top5Matches ?? 0;
-
-  if (matchCount < 2 && daysSince >= 30) {
-    const { data: rank1Player } = await supabase.from('players').select('id, full_name').eq('id', rank1.player_id).single();
-    await supabase.rpc('apply_rank1_penalty', { p_player_id: rank1.player_id });
-    if (rank1Player) {
-      await supabase.from('notifications').insert({ player_id: rank1Player.id, type: 'rank1_penalty', title: '📉 Rank 1 obligation not met', body: 'You did not play a top-5 opponent twice in your 30-day window. You have been moved to #10.', reference_type: 'ranking' });
-    }
-    await supabase.from('activity_feed').insert({ event_type: 'rank1_penalty', headline: `${rank1Player?.full_name} was moved to #10 for failing the #1 top-5 obligation.`, actor_player_id: rank1.player_id });
-  } else if (matchCount >= 2) {
-    await supabase.from('rankings').update({ rank1_since: new Date().toISOString() }).eq('player_id', rank1.player_id);
-  }
-}
+// The rank-1 obligation used to live here: a 30-day, two-top-5-matches rule
+// inherited from TOC. Carl's Top of the Falls rules place no obligation on the
+// #1 player, and 20260615120000 disabled the database side of it — but this
+// copy survived and would have announced a demotion that never happened, since
+// apply_rank1_penalty is a no-op. Removed entirely; nothing writes rank1_since.
 
 async function confirmResult(
   supabase: ReturnType<typeof createClient>,
@@ -255,16 +253,20 @@ async function confirmResult(
   if (challengeError) throw challengeError;
 
   const [winnerRank, loserRank] = await Promise.all([
-    supabase.from('rankings').select('position, rank1_since').eq('player_id', winnerId).single(),
+    supabase.from('rankings').select('position').eq('player_id', winnerId).single(),
     supabase.from('rankings').select('position').eq('player_id', loserId).single(),
   ]);
   const winnerIsChallenger = match.player1_id === winnerId;
+
+  // Rule 5b applies only when the challenger won from below and moved up.
+  let winnerMovedUp = false;
 
   if (winnerRank.data && loserRank.data) {
     const wPos = winnerRank.data.position;
     const lPos = loserRank.data.position;
     let winnerCurrentPosition = wPos;
     if (wPos > lPos) {
+      winnerMovedUp = true;
       const { error: cascadeError } = await supabase.rpc('cascade_ranking_after_win', { p_winner_id: winnerId, p_loser_id: loserId });
       if (cascadeError) throw cascadeError;
 
@@ -275,11 +277,6 @@ async function confirmResult(
         .single();
       if (refreshedWinnerRankError) throw refreshedWinnerRankError;
       winnerCurrentPosition = refreshedWinnerRank?.position ?? winnerCurrentPosition;
-
-      if (lPos === 1 && !winnerRank.data.rank1_since) {
-        const { error: rank1Error } = await supabase.from('rankings').update({ rank1_since: new Date().toISOString() }).eq('player_id', winnerId);
-        if (rank1Error) throw rank1Error;
-      }
     }
 
     const [winnerStats, loserStats] = await Promise.all([
@@ -301,7 +298,7 @@ async function confirmResult(
     }
   }
 
-  await createPostLossCooldown(supabase, loserId);
+  await applyPostMatchCooldowns(supabase, loserId, winnerId, winnerMovedUp);
 
   const disc = match.discipline;
   const disciplineSeeds = await Promise.all([winnerId, loserId].map((pid) => supabase.from('player_discipline_stats').upsert({ player_id: pid, discipline: disc }, { onConflict: 'player_id,discipline', ignoreDuplicates: true })));
@@ -334,13 +331,6 @@ async function confirmResult(
   ]);
   const { error: activityError } = await supabase.from('activity_feed').insert({ event_type: 'match_confirmed', headline: `${wp.data?.full_name} def. ${lp.data?.full_name} · ${p1Score}–${p2Score}`, actor_player_id: winnerId });
   if (activityError) throw activityError;
-  try {
-    await checkRank1Compliance(supabase);
-  } catch (error) {
-    console.error('rank1 compliance check failed after match confirmation', error);
-    // Match confirmation is already complete at this point. A maintenance check
-    // must not make both players see a failed result submission.
-  }
 }
 
 serve(async (req) => {

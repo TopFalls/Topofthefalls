@@ -29,13 +29,10 @@ function canChallenge(
 ): string | null {
   if (myPos === theirPos) return 'You cannot challenge yourself.';
 
-  // TOF rule: #1 can challenge down to Top 5 to satisfy the rank-1 obligation.
-  if (myPos === 1) {
-    if (theirPos >= 2 && theirPos <= 5) return null;
-    return 'Rank #1 can only challenge players ranked #2 through #5.';
-  }
-
-  // Everyone else challenges upward only.
+  // Challenges go upward only. Carl's rules place no obligation on #1, so the
+  // player at the top has nobody to challenge and only defends. (A previous
+  // version let #1 challenge #2-#5 "to satisfy the rank-1 obligation" — that is
+  // a TOC rule the Top of the Falls ruleset does not have.)
   if (theirPos >= myPos) return 'You can only challenge players ranked above you.';
 
   // TOF rule: Top 11 can only move one spot at a time.
@@ -65,7 +62,7 @@ serve(async (req) => {
 
     const { data: settings } = await supabase
       .from('league_settings')
-      .select('min_race, max_race, challenge_range, challenge_expiry_days, challenge_weekly_limit, disciplines')
+      .select('min_race, max_race, challenge_range, challenge_expiry_days, challenge_weekly_limit, challenge_response_hours, disciplines')
       .single();
 
     const minRace = settings?.min_race ?? 6;
@@ -73,6 +70,8 @@ serve(async (req) => {
     const challengeRange = settings?.challenge_range ?? 2;
     const challengeExpiryDays = settings?.challenge_expiry_days ?? 2;
     const weeklyLimit = settings?.challenge_weekly_limit ?? 2;
+    // Rule 3: the challenged player must respond within 48 hrs of the callout.
+    const responseHours = settings?.challenge_response_hours ?? challengeExpiryDays * 24;
 
     const validDisciplines = Array.isArray(settings?.disciplines) && settings.disciplines.length > 0
       ? settings.disciplines
@@ -144,7 +143,7 @@ serve(async (req) => {
     const { data: myCooldown } = await supabase.from('cooldowns').select('expires_at').eq('player_id', challenger.id).eq('type', 'post_match').gt('expires_at', now).maybeSingle();
     if (myCooldown) return new Response(JSON.stringify({ error: `You are in a post-match cooldown period until ${new Date(myCooldown.expires_at).toLocaleString()}.` }), { status: 429, headers: corsHeaders });
 
-    const expiresAt = new Date(Date.now() + challengeExpiryDays * 24 * 3600 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + responseHours * 3600 * 1000).toISOString();
     const { data: challenge, error: insertErr } = await supabase.from('challenges').insert({ challenger_id: challenger.id, challenged_id: challenged_player_id, discipline, race_length, status: 'pending', expires_at: expiresAt }).select().single();
     if (insertErr) throw insertErr;
 
@@ -171,7 +170,7 @@ serve(async (req) => {
       player_id: challenged_player_id,
       type: 'challenge_received',
       title: `${challengerPlayer?.full_name} challenged you!`,
-      body: `${discipline} - Race to ${race_length}. You have ${challengeExpiryDays} days to respond.`,
+      body: `${discipline} - Race to ${race_length}. You have ${responseHours} hours to respond.`,
       reference_id: challenge.id,
       reference_type: 'challenge',
     });
@@ -181,7 +180,7 @@ serve(async (req) => {
     await supabase.from('activity_feed').insert({
       event_type: 'challenge_issued',
       headline: `${challengerPlayer?.full_name} challenged ${challengedPlayer?.full_name} to ${discipline}!`,
-      detail: `Race to ${race_length} · #${myPos} → #${theirPos} · responds within ${challengeExpiryDays} days`,
+      detail: `Race to ${race_length} · #${myPos} → #${theirPos} · responds within ${responseHours} hours`,
       actor_player_id: challenger.id,
     });
 

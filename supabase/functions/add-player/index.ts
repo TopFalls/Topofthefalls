@@ -92,7 +92,8 @@ async function insertRankingAtBottom(supabase: any, playerId: string): Promise<n
       player_id: playerId,
       position,
       previous_position: null,
-      rank1_since: position === 1 ? new Date().toISOString() : null,
+      // No rank-1 clock — Top of the Falls has no obligation on the #1 player.
+      rank1_since: null,
     });
 
     if (!error) return position;

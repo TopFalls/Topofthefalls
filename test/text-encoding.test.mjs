@@ -32,6 +32,8 @@ test('no source file contains mojibake', () => {
 
   const offenders = [];
   for (const file of sourceFiles) {
+    // This file necessarily contains mojibake — it is the thing being matched.
+    if (file.endsWith('test/text-encoding.test.mjs')) continue;
     const text = readFileSync(file, 'utf8');
     for (const [index, line] of text.split('\n').entries()) {
       if (pattern.test(line)) offenders.push(`${file}:${index + 1}: ${line.trim().slice(0, 120)}`);

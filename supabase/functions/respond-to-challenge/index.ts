@@ -32,14 +32,15 @@ serve(async (req) => {
       if (Number.isNaN(scheduledAt.getTime())) return new Response(JSON.stringify({ error: 'scheduled_at must be a valid date.' }), { status: 400, headers: cors });
       if (scheduledAt.getTime() < Date.now() - 5 * 60 * 1000) return new Response(JSON.stringify({ error: 'Match cannot be scheduled in the past.' }), { status: 400, headers: cors });
 
-      const { data: settings } = await supabase.from('league_settings').select('venues').single();
+      const { data: settings } = await supabase.from('league_settings').select('venues, match_play_days').single();
       const validVenues = Array.isArray(settings?.venues) && settings.venues.length > 0 ? settings.venues : VALID_VENUES;
       if (typeof venue !== 'string' || !validVenues.includes(venue)) {
         return new Response(JSON.stringify({ error: 'Venue is not in league settings.' }), { status: 400, headers: cors });
       }
 
-      // Match must be played within 10 days of acceptance
-      const matchDeadline = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString();
+      // Rule 3a.I: match must be played within 10 days of the challenge being accepted.
+      const matchPlayDays = settings?.match_play_days ?? 10;
+      const matchDeadline = new Date(Date.now() + matchPlayDays * 24 * 3600 * 1000).toISOString();
 
       const { data: scheduledChallenge, error: updateError } = await supabase
         .from('challenges')
