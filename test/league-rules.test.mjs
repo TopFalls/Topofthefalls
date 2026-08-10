@@ -27,6 +27,9 @@ const respondToChallenge = read('supabase/functions/respond-to-challenge/index.t
 const addPlayer = read('supabase/functions/add-player/index.ts');
 const rank1Compliance = read('supabase/functions/rank1-compliance/index.ts');
 const settingsTab = read('src/components/admin/SettingsTab.tsx');
+const setPlayerActive = read('supabase/functions/set-player-active/index.ts');
+const challengesPage = read('src/pages/ChallengesPage.tsx');
+const challengesTab = read('src/components/admin/ChallengesTab.tsx');
 
 // --- Rule 2, 3, 3b: the challenge window ----------------------------------
 
@@ -143,6 +146,73 @@ test('rule 4 — Saratoga stays keyed to the visible top 20', () => {
 test('rule c.I — race to six minimum, no maximum', () => {
   assert.match(createChallenge, /min_race \?\? 6/);
   assert.match(createChallenge, /Number\.isInteger\(maxRace\) && race_length > maxRace/);
+});
+
+// --- Inactive players ------------------------------------------------------
+
+test('inactive drift: two spots per 30 days, automatic, and Carl is told', () => {
+  const m = readMigration('inactive_lifecycle_and_wash');
+  assert.match(m, /v_periods := floor\(v_days \/ 30\.0\)/);
+  assert.match(m, /drop_player_spots\(v_row\.id, v_due \* 2\)/);
+  // Idempotent: a delayed or repeated run must not drop anyone twice.
+  assert.match(m, /v_due := v_periods - COALESCE\(v_row\.inactive_drift_periods, 0\)/);
+  assert.match(m, /alert_type.*inactive_drift|'inactive_drift'/s);
+  // It has to run without anyone remembering to.
+  assert.match(m, /cron\.schedule\('tof-inactive-drift'/);
+});
+
+test('90 days raises a review for Carl, once, and clears if they come back', () => {
+  const m = readMigration('inactive_lifecycle_and_wash');
+  assert.match(m, /v_days >= 90/);
+  assert.match(m, /alert_type = 'inactive_90_day' AND acknowledged_at IS NULL/);
+  // Returning acknowledges the open review rather than leaving it hanging.
+  assert.match(m, /UPDATE public\.admin_alerts SET acknowledged_at = now\(\)\s*\n\s*WHERE player_id = p_player_id AND alert_type = 'inactive_90_day'/);
+});
+
+test('returning: defend or wait 7 days, 24 hours if last on the list', () => {
+  const m = readMigration('inactive_lifecycle_and_wash');
+  assert.match(m, /v_hours := CASE WHEN v_pos IS NOT NULL AND v_pos = v_last THEN 24 ELSE 168 END/);
+  assert.match(m, /'reentry', now\(\) \+ make_interval\(hours => v_hours\)/);
+  // Defending ends the wait — win or lose. player2 is the challenged side.
+  assert.match(submitResult, /\.eq\('player_id', match\.player2_id\)\s*\n\s*\.eq\('type', 'reentry'\)/);
+});
+
+test('every cooldown blocks challenging and none block defending', () => {
+  // create-challenge is the only place a cooldown is checked, and it no longer
+  // looks at post_match alone.
+  assert.doesNotMatch(createChallenge, /\.eq\('type', 'post_match'\)/);
+  assert.match(createChallenge, /myCooldown\.type === 'reentry'/);
+  assert.match(createChallenge, /myCooldown\.type === 'wash'/);
+  assert.doesNotMatch(respondToChallenge, /from\('cooldowns'\)/);
+});
+
+test('players can go inactive themselves, and the admin path uses the same rules', () => {
+  const m = readMigration('inactive_lifecycle_and_wash');
+  assert.match(m, /FUNCTION public\.set_own_active\(boolean\)/);
+  assert.match(m, /GRANT EXECUTE ON FUNCTION public\.set_own_active\(boolean\) TO authenticated/);
+  // Setting players.is_active directly would skip the drift clock and the wait.
+  assert.match(setPlayerActive, /rpc\('set_player_active_state'/);
+  assert.doesNotMatch(setPlayerActive, /\.update\(\{ is_active: body\.is_active \}\)/);
+});
+
+// --- Rule 4: the wash ------------------------------------------------------
+
+test('a wash is raised by either player and decided by Carl', () => {
+  const m = readMigration('inactive_lifecycle_and_wash');
+  assert.match(m, /request_wash: you are not in this challenge/);
+  assert.match(m, /admin_resolve_wash: admin role required/);
+  // Nobody moves; the challenger sits, the challenged player is free.
+  assert.match(m, /'wash', now\(\) \+ make_interval\(hours => v_hours\)/);
+  assert.doesNotMatch(m, /cascade_ranking_after_win/);
+  assert.match(challengesPage, /rpc\('request_wash'/);
+  assert.match(challengesTab, /admin_resolve_wash/);
+});
+
+test('rule c.I — an agreed race longer than 15 is no longer rejected', () => {
+  // "no maximum if it is agreed upon" — the tables used to cap it at 15.
+  const m = readMigration('inactive_lifecycle_and_wash');
+  assert.match(m, /challenges_race_length_check CHECK \(race_length >= 1\)/);
+  assert.match(m, /matches_race_length_check CHECK \(race_length >= 1\)/);
 });
 
 // --- Admin surface ---------------------------------------------------------

@@ -14,6 +14,7 @@ import { PlayersTab } from '../components/admin/PlayersTab';
 import { TreasuryTab } from '../components/admin/TreasuryTab';
 import { SettingsTab } from '../components/admin/SettingsTab';
 import { AuditTab } from '../components/admin/AuditTab';
+import { AdminAlertsCard } from '../components/admin/AdminAlertsCard';
 
 type TabKey = 'disputes' | 'challenges' | 'matches' | 'rankings' | 'players' | 'treasury' | 'settings' | 'audit';
 
@@ -65,6 +66,9 @@ export default function AdminPage() {
         </div>
         <ChevronRight size={16} className="text-[#6B7280] shrink-0" />
       </button>
+
+      {/* Inactivity drift, 90-day reviews and wash requests land here */}
+      <AdminAlertsCard />
 
       {/* Tabs — horizontal scroll */}
       <div className="flex overflow-x-auto gap-1 mb-5 bg-[#1A1A1A] rounded-xl p-1" style={{ scrollbarWidth: 'none' }}>

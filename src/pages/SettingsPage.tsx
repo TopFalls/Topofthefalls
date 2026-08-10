@@ -9,6 +9,7 @@ import { useRankings } from '../hooks/useRankings';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { Avatar } from '../components/Avatar';
 import { GlassCard } from '../components/GlassCard';
+import { InactiveToggleCard } from '../components/InactiveToggleCard';
 import { Button } from '../components/Button';
 
 const DISCIPLINES = ['8 Ball', '9 Ball', '10 Ball', 'Saratoga'] as const;
@@ -266,6 +267,13 @@ export default function SettingsPage() {
               Email (read-only): {profile?.email}
             </div>
           </GlassCard>
+        </motion.div>
+      )}
+
+      {/* Availability — players may go inactive at any time */}
+      {player && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
+          <InactiveToggleCard />
         </motion.div>
       )}
 

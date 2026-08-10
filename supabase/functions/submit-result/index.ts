@@ -300,6 +300,15 @@ async function confirmResult(
 
   await applyPostMatchCooldowns(supabase, loserId, winnerId, winnerMovedUp);
 
+  // A returning player's wait ends once they have defended their spot, win or
+  // lose — "must either defend or wait 7 days". player2 is the challenged side.
+  const { error: reentryError } = await supabase
+    .from('cooldowns')
+    .delete()
+    .eq('player_id', match.player2_id)
+    .eq('type', 'reentry');
+  if (reentryError) throw reentryError;
+
   const disc = match.discipline;
   const disciplineSeeds = await Promise.all([winnerId, loserId].map((pid) => supabase.from('player_discipline_stats').upsert({ player_id: pid, discipline: disc }, { onConflict: 'player_id,discipline', ignoreDuplicates: true })));
   for (const seed of disciplineSeeds) {

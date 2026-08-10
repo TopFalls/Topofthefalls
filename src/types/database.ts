@@ -67,6 +67,10 @@ export interface Database {
           match_deadline: string | null;
           expires_at: string;
           response_message: string | null;
+          // Rule 4 — a player says they could not agree on a time; Carl decides.
+          wash_requested_by: string | null;
+          wash_requested_at: string | null;
+          wash_reason: string | null;
           created_at: string;
           updated_at: string;
         };

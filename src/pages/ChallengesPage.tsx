@@ -56,6 +56,7 @@ function RespondModal({
   const [time, setTime]       = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
+  const [washSent, setWashSent] = useState('');
 
   const callFn = async (body: object): Promise<{ success?: boolean; error?: string }> => {
     try {
@@ -88,10 +89,30 @@ function RespondModal({
     onSuccess();
   };
 
+  // Rule 4: a wash is Carl's call, not an instant cancel. Raising one flags the
+  // challenge for him; if he agrees it is a wash, nobody moves, the challenger
+  // sits 24 hrs and the challenged player may challenge up straight away.
   const handleWash = async () => {
     setLoading(true);
-    await callFn({ challenge_id: challenge.id, action: 'wash' });
+    setError('');
+    const { data, error: rpcError } = await supabase.rpc('request_wash', {
+      p_challenge_id: challenge.id,
+      p_reason: null,
+    });
     setLoading(false);
+    if (rpcError) {
+      setError(
+        rpcError.code === 'PGRST202' || rpcError.code === '42883'
+          ? 'Not available on the app yet — try again after the next update.'
+          : rpcError.message,
+      );
+      return;
+    }
+    setWashSent(
+      (data as { already_requested?: boolean } | null)?.already_requested
+        ? 'Already sent to Carl — he will decide.'
+        : "Sent to Carl. He'll decide whether it's a wash.",
+    );
     onSuccess();
   };
 
@@ -186,9 +207,13 @@ function RespondModal({
             </Button>
           </div>
         )}
-        <Button variant="ghost" fullWidth size="sm" onClick={handleWash} loading={loading}>
-          We couldn't agree on a time
-        </Button>
+        {washSent ? (
+          <p className="text-[#22C55E] text-xs font-[Barlow] text-center pt-1">{washSent}</p>
+        ) : (
+          <Button variant="ghost" fullWidth size="sm" onClick={handleWash} loading={loading}>
+            We couldn't agree on a time
+          </Button>
+        )}
       </motion.div>
     </motion.div>
   );

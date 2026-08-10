@@ -61,11 +61,19 @@ serve(async (req) => {
     return json({ success: true, changed: false, player: existingPlayer });
   }
 
+  // set_player_active_state owns what going inactive and coming back mean:
+  // it starts the 30-day drift clock, and on return applies the "defend or
+  // wait" period (7 days, or 24 hrs for the last player on the list). Setting
+  // players.is_active directly here would skip both.
+  const { data: stateResult, error: stateError } = await adminClient
+    .rpc('set_player_active_state', { p_player_id: body.player_id, p_is_active: body.is_active });
+
+  if (stateError) return json({ error: stateError.message }, 500);
+
   const { data: updatedPlayer, error: updateError } = await adminClient
     .from('players')
-    .update({ is_active: body.is_active })
-    .eq('id', body.player_id)
     .select('id, full_name, is_active, profile_id, updated_at')
+    .eq('id', body.player_id)
     .single();
 
   if (updateError || !updatedPlayer) return json({ error: updateError?.message ?? 'Could not update player.' }, 500);
@@ -80,6 +88,7 @@ serve(async (req) => {
       previous_is_active: existingPlayer.is_active,
       new_is_active: body.is_active,
       claimed_profile_status: existingPlayer.profile_id ? 'claimed' : 'unclaimed',
+      state_result: stateResult,
     },
   });
   if (auditError) return json({ error: auditError.message }, 500);

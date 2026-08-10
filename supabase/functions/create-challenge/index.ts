@@ -139,9 +139,29 @@ serve(async (req) => {
     const { data: existingIn } = await supabase.from('challenges').select('id').eq('challenged_id', challenged_player_id).in('status', ['pending', 'accepted', 'scheduled', 'in_progress']).maybeSingle();
     if (existingIn) return new Response(JSON.stringify({ error: 'That player already has an active challenge they must resolve first.' }), { status: 409, headers: corsHeaders });
 
+    // Every cooldown blocks issuing a challenge and none of them block
+    // accepting one — that is what the rules mean by "defend or wait".
+    //   post_match  rule 5b/5c, after a result
+    //   reentry     back from inactive: defend, or wait
+    //   wash        rule 4, the challenger sits after a wash
     const now = new Date().toISOString();
-    const { data: myCooldown } = await supabase.from('cooldowns').select('expires_at').eq('player_id', challenger.id).eq('type', 'post_match').gt('expires_at', now).maybeSingle();
-    if (myCooldown) return new Response(JSON.stringify({ error: `You are in a post-match cooldown period until ${new Date(myCooldown.expires_at).toLocaleString()}.` }), { status: 429, headers: corsHeaders });
+    const { data: myCooldown } = await supabase
+      .from('cooldowns')
+      .select('type, expires_at')
+      .eq('player_id', challenger.id)
+      .gt('expires_at', now)
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (myCooldown) {
+      const until = new Date(myCooldown.expires_at).toLocaleString();
+      const message = myCooldown.type === 'reentry'
+        ? `You have just come back from inactive. Defend your spot, or wait until ${until} to challenge up.`
+        : myCooldown.type === 'wash'
+          ? `Your last challenge was called a wash. You can challenge again after ${until}.`
+          : `You are in a post-match cooldown period until ${until}.`;
+      return new Response(JSON.stringify({ error: message }), { status: 429, headers: corsHeaders });
+    }
 
     const expiresAt = new Date(Date.now() + responseHours * 3600 * 1000).toISOString();
     const { data: challenge, error: insertErr } = await supabase.from('challenges').insert({ challenger_id: challenger.id, challenged_id: challenged_player_id, discipline, race_length, status: 'pending', expires_at: expiresAt }).select().single();

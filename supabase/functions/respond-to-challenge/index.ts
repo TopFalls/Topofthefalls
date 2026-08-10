@@ -160,28 +160,14 @@ serve(async (req) => {
       ]);
 
     } else if (action === 'wash') {
-      // Either player can declare a scheduling wash — treated as if the challenge never happened
-      const isChallenger = challenge.challenger_id === callerPlayer.id;
-      const isChallenged  = challenge.challenged_id === callerPlayer.id;
-      if (!isChallenger && !isChallenged) return new Response(JSON.stringify({ error: 'Not authorized.' }), { status: 403, headers: cors });
-      if (!['pending', 'accepted', 'scheduled'].includes(challenge.status)) {
-        return new Response(JSON.stringify({ error: 'Challenge cannot be washed at this stage.' }), { status: 409, headers: cors });
-      }
-
-      // Cancel with no penalties — no cooldowns, no rank changes
-      await supabase.from('challenges').update({ status: 'cancelled' }).eq('id', challenge_id);
-
-      // Also cancel the associated match if one was created
-      await supabase.from('matches').update({ status: 'resolved' }).eq('challenge_id', challenge_id);
-
-      const { data: challengerPlayer } = await supabase.from('players').select('full_name').eq('id', challenge.challenger_id).single();
-      const { data: challengedPlayer } = await supabase.from('players').select('full_name').eq('id', challenge.challenged_id).single();
-      await supabase.from('activity_feed').insert({
-        event_type: 'challenge_cancelled',
-        headline: `${callerPlayer.full_name} declared a scheduling wash on ${challengerPlayer?.full_name ?? '?'} vs ${challengedPlayer?.full_name ?? '?'}.`,
-        detail: `${challenge.discipline} · race to ${challenge.race_length} · no ranking change, no cooldown`,
-        actor_player_id: callerPlayer.id,
-      });
+      // Rule 4 makes a wash Carl's decision, not a unilateral cancel. This
+      // branch used to let either player void the challenge outright — no
+      // ranking change, no cooldown, no admin involvement. The app now raises
+      // a request through request_wash and Carl decides; this stays only to
+      // answer any client still on the old build.
+      return new Response(JSON.stringify({
+        error: 'A wash is decided by the league admin. Use "We couldn\'t agree on a time" and it will be sent for a decision.',
+      }), { status: 409, headers: cors });
 
     } else if (action === 'cancel') {
       // Challenger cancels their own pending challenge
