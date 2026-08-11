@@ -212,3 +212,16 @@ anything that hit a stop condition or moved canon.
 Append an entry to the top of `docs/tof-change-log.md` in the same commit. That
 log is how Chase stays out of the loop without losing the thread — if it isn't
 logged, he has no way to audit what this room did.
+
+---
+
+## 9. Snippets handed to Chase must be PowerShell-safe
+
+The `bash` blocks above are for the Bash tool. **Chase's terminal is Windows
+PowerShell 5.1**, where `&&` is a parser error, not a chain operator. Anything
+written for him to paste must run there:
+
+- No `&&`. Use `;` for unconditional, or `<cmd>; if ($?) { <cmd> }` for conditional.
+- Drop the `cd` entirely — the working directory is already this checkout.
+- No `cat`, `head`, `tail`, `which`, `touch`, `2>/dev/null`.
+- One command per fenced block, so the Run button does one thing.
