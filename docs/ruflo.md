@@ -25,8 +25,15 @@ ruflo-lab/        # OUTSIDE the repo — full ruflo if/when you want it
 <league>-app/     # the product repo stays clean
   CLAUDE.md       # untouched project canon
   docs/ruflo.md   # this file
-  .claude/agents/ # the only committed footprint (portable, see below)
+  .claude/agents/ # portable review subagents (see below)
+  .claude/skills/ # tof-edit — this instance's editing room, NOT portable
 ```
+
+`.claude/agents/` and `.claude/skills/` are the only committed Claude Code
+footprint. The agents are league-agnostic and travel with a clone; the
+`tof-edit` skill is deliberately instance-specific — it hardcodes Carl's
+Supabase/Vercel targets and this league's traps. A new league clone should
+rewrite it, not inherit it.
 
 ## The committed subagents (portable across leagues)
 
@@ -59,9 +66,9 @@ can't clobber the committed `.claude/agents/` or `CLAUDE.md`):
 Then drive the app from the lab folder when you want heavy multi-agent work.
 
 > **Do not** run `npx ruflo init wizard` directly inside this repo — it would
-> overwrite the committed agents and regenerate `CLAUDE.md`. The script exists
-> precisely so you don't have to remember that. As a backstop, `.gitignore`
-> guards `.claude-flow/`, `.mcp.json`, and `*.bak`.
+> overwrite the committed agents and skills and regenerate `CLAUDE.md`. The
+> script exists precisely so you don't have to remember that. As a backstop,
+> `.gitignore` guards `.claude-flow/`, `.mcp.json`, and `*.bak`.
 
 The committed agents also self-guard: if a clone's `CLAUDE.md` has no league
 canon yet, each agent will tell you to populate it before relying on the

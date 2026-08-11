@@ -103,6 +103,20 @@ cd /c/Users/cdali/Downloads/Topofthefalls
 This is a **Vite + React SPA** (`npm run build` → `tsc -b && vite build`, output
 `dist/`), not a Next.js app. Vercel framework preset: Vite.
 
+## The editing room
+
+Any change, edit, fix or addition Carl asks for goes through
+`.claude/skills/tof-edit/SKILL.md` (`/tof-edit`) — the dedicated room for this
+app and nothing else. It takes Carl's request in his own words and carries it to
+deployed: intake → change → build/test gates → commit to `main` → Vercel → a
+plain-English report Chase can forward.
+
+**Carl asking for it is the authorization.** Product decisions are not routed
+back to Chase. Only four things stop the room: crossing the instance boundary,
+irreversibly destroying live data, touching secrets/auth config, or moving real
+money. Everything else ships, and every shipped change is logged in
+`docs/tof-change-log.md`.
+
 ## Tools on hand
 
 See `docs/ruflo.md` for the **ruflo** agent meta-harness — what it is, the
