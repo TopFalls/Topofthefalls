@@ -19,6 +19,39 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-12 — Confirmed: Carl can add players again
+
+**Verified in the database, not just reported.** Carl added two real players
+after the schema-cache fix:
+
+- Anthony Herrera → #118 at 17:40:52 UTC
+- Lloyd Boggs → #119 at 17:46:21 UTC
+
+Both have rankings, season stats and discipline stats; both unclaimed; no
+invite errors. `Lloyd Boggs` is the same name that appeared in his original
+error screenshot. Roster is now 119 with 119 rankings.
+
+**Also proven today, incidentally:** Chase logged in with a 6-digit emailed
+code. That closes the last open launch item — SMTP delivers *and* the
+magic-link template renders `{{ .Token }}` rather than only a link.
+
+**How it was tested.** `Layout.tsx:95` forces any signed-in user without a
+claimed roster row to `/claim`, so an admin with no player row cannot reach the
+admin screen at all. Rather than claim a real player's name, the edge function
+was called directly from the signed-in browser console. A test player was
+created at #120, verified, then removed along with its ranking, stats, metrics,
+audit and activity-feed rows.
+
+**Temporary admin grant, now reverted.** `chase.dalin@gmail.com` was promoted to
+`admin` to attempt a UI test, then returned to `player`. Verified: Carl is again
+the sole admin, matching canon.
+
+**Still untested:** adding a player *with* an email attached. Both of Carl's
+adds left the email blank, so the invite path has not run in anger even though
+SMTP now works.
+
+---
+
 ## 2026-08-12 — The Vercel project had no Git repository connected
 
 **Found while chasing why frontend fixes never appeared in production.** The
