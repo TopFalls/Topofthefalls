@@ -53,6 +53,8 @@ export function PlayersTab() {
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError]     = useState('');
   const [addBanner, setAddBanner]   = useState('');
+  // The player was added but the invite email did not go out — not a failure.
+  const [addWarning, setAddWarning] = useState('');
   const [activeToggling, setActiveToggling] = useState<string | null>(null);
   const [activeError, setActiveError] = useState('');
   const [invitingId, setInvitingId]   = useState<string | null>(null);
@@ -80,6 +82,7 @@ export function PlayersTab() {
     setAddLoading(true);
     setAddError('');
     setAddBanner('');
+    setAddWarning('');
 
     const payload: { full_name: string; fargo_rating?: number; email?: string } = { full_name: newName.trim() };
     const trimmedFargo = newFargo.trim();
@@ -103,8 +106,16 @@ export function PlayersTab() {
     }
 
     try {
-      const json = await callEdgeFunction<{ message?: string; ranking_position?: number }>('add-player', payload);
-      setAddBanner(json.message ?? `Added ${newName.trim()} at #${json.ranking_position}.`);
+      const json = await callEdgeFunction<{
+        message?: string;
+        ranking_position?: number;
+        invite_warning?: string | null;
+      }>('add-player', payload);
+      if (json.invite_warning) {
+        setAddWarning(json.message ?? `Added ${newName.trim()} at #${json.ranking_position}, but the invite email did not go out.`);
+      } else {
+        setAddBanner(json.message ?? `Added ${newName.trim()} at #${json.ranking_position}.`);
+      }
       setNewName('');
       setNewFargo('');
       setNewEmail('');
@@ -163,7 +174,8 @@ export function PlayersTab() {
             onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
             className="w-full px-3 py-2.5 rounded-lg bg-[#252525] border border-[#333] text-[#E8E2D6] font-[Barlow] text-sm focus:outline-none focus:border-[var(--toc-theme-accent)] mb-1" />
           <p className="text-[#6B7280] text-xs font-[Barlow] mb-3">
-            Leave blank to add as unclaimed. With email, an invite is sent immediately.
+            Leave blank to add as unclaimed. With an email we also try to send an invite — if it
+            doesn't go out, the player is still added and you can invite them later.
           </p>
           {addError && <p className="text-[#EF4444] text-xs font-[Barlow] mb-2">{addError}</p>}
           <div className="flex gap-2">
@@ -180,6 +192,7 @@ export function PlayersTab() {
       )}
 
       {addBanner && <p className="text-[#22C55E] text-xs font-[Barlow]">{addBanner}</p>}
+      {addWarning && <p className="text-[#F59E0B] text-xs font-[Barlow]">{addWarning}</p>}
       {inviteBanner && <p className="text-[#22C55E] text-xs font-[Barlow]">{inviteBanner}</p>}
       {activeError && <p className="text-[#EF4444] text-xs font-[Barlow]">{activeError}</p>}
 

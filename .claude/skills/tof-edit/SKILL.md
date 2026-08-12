@@ -150,9 +150,13 @@ rollover. Never write "season" in UI copy, admin labels, emails or customer docs
 `20260806122000_add_season_challenge_counters.sql` keep their inherited names
 because edge functions and types depend on them; nothing user-facing says it.
 
-**Mojibake.** This is a Windows checkout and smart quotes / apostrophes / dashes
-have shipped as `â€™` before (fixed in 5424462, which also added a guard). After
-any copy edit, grep the diff for `â€`, `Ã`, `â€"` before committing.
+**Mojibake.** This is a Windows checkout, and smart quotes, apostrophes and
+dashes have reached players as garbled Latin-1 before — a match headline in the
+activity feed and a push title (fixed in 5424462). `test/text-encoding.test.mjs`
+now scans every tracked source file, so `npm run test` is the check. If it
+fires, re-save the offending file as UTF-8. **Never exclude a path from that
+test to make it pass** — and don't paste example mojibake into a repo file, or
+the guard will correctly flag your own documentation.
 
 **Records are private.** `20260809120000_restrict_stats_visibility.sql`
 deliberately restricts who sees what. Don't widen stats visibility as a

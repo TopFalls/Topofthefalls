@@ -415,28 +415,42 @@ serve(async (req) => {
     );
     if (disciplineStatsError) throw new Error(`Could not create discipline stats: ${disciplineStatsError.message}`);
 
+    // Adding someone to the list and emailing them an invite are two different
+    // jobs. The player is already on the ladder at this point, so an invite
+    // problem must NOT delete them — it downgrades to a warning and the admin
+    // can invite again later from the player list. Before this, a failing
+    // invite rolled the whole player back and the add looked broken.
     let invite: InviteResult | null = null;
+    let inviteWarning: string | null = null;
+
     if (email) {
-      const origin = req.headers.get('origin') ?? Deno.env.get('SITE_URL') ?? '';
-      const redirectTo = origin ? `${origin.replace(/\/$/, '')}/auth/callback` : undefined;
-      invite = await sendInviteOrLookupExisting(supabase, email, redirectTo);
+      try {
+        const origin = req.headers.get('origin') ?? Deno.env.get('SITE_URL') ?? '';
+        const redirectTo = origin ? `${origin.replace(/\/$/, '')}/auth/callback` : undefined;
+        const pending = await sendInviteOrLookupExisting(supabase, email, redirectTo);
 
-      // Make sure the invited account isn't already claimed by another player.
-      const { data: otherClaim } = await supabase
-        .from('players')
-        .select('id, full_name')
-        .eq('profile_id', invite.authUserId)
-        .neq('id', player.id)
-        .maybeSingle();
-      if (otherClaim) {
-        throw new Error(`That email is already linked to player "${otherClaim.full_name}".`);
+        // Make sure the invited account isn't already claimed by another player.
+        const { data: otherClaim } = await supabase
+          .from('players')
+          .select('id, full_name')
+          .eq('profile_id', pending.authUserId)
+          .neq('id', player.id)
+          .maybeSingle();
+        if (otherClaim) {
+          throw new Error(`${email} is already linked to ${otherClaim.full_name}.`);
+        }
+
+        const { error: linkError } = await supabase
+          .from('players')
+          .update({ profile_id: pending.authUserId })
+          .eq('id', player.id);
+        if (linkError) throw new Error(`Could not link the new player to that account: ${linkError.message}`);
+
+        invite = pending;
+      } catch (error) {
+        console.error('[add-player invite-new]', error);
+        inviteWarning = error instanceof Error ? error.message : 'Could not send the invite email.';
       }
-
-      const { error: linkError } = await supabase
-        .from('players')
-        .update({ profile_id: invite.authUserId })
-        .eq('id', player.id);
-      if (linkError) throw new Error(`Could not link new player to invited account: ${linkError.message}`);
     }
 
     await supabase.from('audit_events').insert({
@@ -450,6 +464,7 @@ serve(async (req) => {
         email: email ?? null,
         invite_sent: invite?.inviteSent ?? false,
         invited_existing_account: invite?.alreadyExisted ?? false,
+        invite_error: inviteWarning,
         flow: invite ? 'create_and_invite' : 'create_only',
         claimed_profile_status: invite ? 'claimed' : 'unclaimed',
       },
@@ -480,9 +495,12 @@ serve(async (req) => {
       email: email ?? null,
       invite_sent: invite?.inviteSent ?? false,
       invited_existing_account: invite?.alreadyExisted ?? false,
-      message: invite
-        ? (invite.inviteSent ? `Invite sent to ${email}.` : `Player linked to existing account for ${email}.`)
-        : undefined,
+      invite_warning: inviteWarning,
+      message: inviteWarning
+        ? `${fullName} is on the list at #${rankingPosition}, but the invite to ${email} could not be sent. They are added either way — you can send the invite again later.`
+        : invite
+          ? (invite.inviteSent ? `Invite sent to ${email}.` : `Player linked to existing account for ${email}.`)
+          : undefined,
     }, 201);
   } catch (error) {
     if (createdPlayer?.id) await rollbackCreatedPlayer(supabase, createdPlayer.id);
