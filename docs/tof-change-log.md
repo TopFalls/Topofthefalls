@@ -19,6 +19,40 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-12 — Email sending works for the first time
+
+**Carl asked:** (follow-on from the add-player error) — get invites actually
+sending.
+
+**Shipped:** Custom SMTP configured on the Supabase project via a Gmail relay —
+`smtp.gmail.com:465`, user and sender `topofthefallsapp@gmail.com`, Google App
+Password. Auth email rate limit raised 100 → 150/hour. Chase did the account
+creation and credential entry; that is a stop condition and stays with him.
+
+**Proof, not assumption:** `POST /auth/v1/recover` returned **200** and
+`auth.users.recovery_sent_at` advanced to 2026-08-12 16:27:16. The first attempt
+failed with Gmail `535 5.7.8 Username and Password not accepted` — an App
+Password generated against the wrong signed-in Google account. Regenerating it
+under `topofthefallsapp@gmail.com` fixed it.
+
+**Also corrected:** a project memory claimed SMTP had been configured via Resend
+and verified on 2026-08-02. That was false by today. Mail had never actually
+sent on this project — `invited_at` was null for every user. Rewritten to
+verified state.
+
+**Files:** none — this was infrastructure, no code changed.
+**Deploy:** n/a · **Gates:** n/a (no code change)
+
+**Flags:**
+- **The 6-digit code template is still unverified.** The claim screen asks for a
+  code, so the magic-link template must render `{{ .Token }}` and not just a
+  link. Sending works; whether the *right* email content goes out is untested.
+  This is the next thing to check before anyone is invited.
+- Wade Thompson (#4) is unclaimed — the old test-account holding is already
+  released, contrary to what the stale memory said.
+
+---
+
 ## 2026-08-11 — A failed invite email no longer throws away the added player
 
 **Carl asked:** Getting an error when trying to add players to the list. Also
