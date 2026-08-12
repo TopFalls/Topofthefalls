@@ -19,6 +19,32 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-12 — The Vercel project had no Git repository connected
+
+**Found while chasing why frontend fixes never appeared in production.** The
+Vercel project `topofthefalls` (team `Totf`/`tof2`) shows **"Connect Git
+Repository"** on its project card — nothing is attached. Five commits pushed to
+`TopFalls/Topofthefalls` never triggered a build. The last deploy was 2 days
+old, which matches the Aug 10 code being live and nothing since. Pushing to
+`main` does not deploy this app.
+
+**Unblocked without Carl:** the Vercel CLI is installed and Chase is already
+authenticated as `cdalin1985`, and `.vercel/project.json` pins the correct
+project and team, so `npx vercel --prod --yes` publishes straight to production.
+Ran it — deployment `dpl_2QBLPpXBuzbhqz4VikfxkkhRVUyG`, READY. Verified live:
+new bundle `index-BpQ9PqN0.js`, and `invite_warning` present in the AdminPage
+chunk for the first time.
+
+**Until the Git link exists, every frontend change needs that command.** A `git
+push` alone ships nothing to players.
+
+**The durable fix needs Carl.** Verified via the GitHub API: Chase has
+`push` but not `admin` on the repo and is an outside collaborator, not an org
+member. Attaching the repo requires the Vercel GitHub App to be authorised on
+the `TopFalls` org, which only an org owner can approve.
+
+---
+
 ## 2026-08-12 — The actual add-player bug: a stale PostgREST schema cache
 
 **Carl's error, verbatim (from his screen):** *"Could not create season stats:
