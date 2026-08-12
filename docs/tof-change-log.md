@@ -19,6 +19,48 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-12 — The actual add-player bug: a stale PostgREST schema cache
+
+**Carl's error, verbatim (from his screen):** *"Could not create season stats:
+Could not find the 'challenges_issued' column of 'player_season_stats' in the
+schema cache"* — with the email field left blank, so the invite path never ran.
+
+**Root cause:** PostgREST was serving a stale schema cache. Both
+`challenges_issued` and `challenges_received` have existed on
+`player_season_stats` since `20260806122000_add_season_challenge_counters.sql`
+and are present and correct in `information_schema`. Postgres was fine; the API
+layer in front of it rejected the insert before it ever reached the database.
+Edge functions are not exempt — service-role `supabase.from(...).insert()` still
+goes through PostgREST.
+
+**Fix:** migration `reload_postgrest_schema_cache` — a `COMMENT ON COLUMN` to
+fire Supabase's schema-reload event trigger, plus `NOTIFY pgrst, 'reload
+schema'`. No data touched.
+
+**Verified:** POSTing a body naming `challenges_issued` now returns `42501
+permission denied` (a grants error) instead of `PGRST204` (column unknown) —
+proving PostgREST resolves the column. Also swept all 36 columns the add-player
+function writes across five tables; none missing, so there is no second landmine
+behind this one.
+
+**Correction to the 2026-08-11 entry.** That entry diagnosed the failure as the
+invite email. That was wrong. The invite rollback was a real defect and the fix
+stands — an invite failure really would have deleted the player — but it was not
+what Carl was hitting. The diagnosis was built on `invited_at` being null and no
+`player.added` events, which show that nothing succeeded, not why. Chase
+challenged it and was right. The error text settled it in seconds.
+
+**Deploy:** migration applied to `dpbgdisezxlttwrxqanu`. No code change, so no
+rebuild needed.
+
+**Flags:**
+- If "Add Player" ever fails again on a column that demonstrably exists, suspect
+  the schema cache before the schema.
+- Still untested end to end: one real add by Carl, with an email attached, now
+  that both this and SMTP are fixed.
+
+---
+
 ## 2026-08-12 — Email sending works for the first time
 
 **Carl asked:** (follow-on from the add-player error) — get invites actually
