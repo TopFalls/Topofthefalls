@@ -47,7 +47,12 @@ sees everyone's.
 
 **Files:** `supabase/functions/add-player/index.ts`,
 `src/components/admin/PlayersTab.tsx`
-**Commit:** 262ff8e · **Deploy:** edge function `add-player` v1 → v2, Vercel green
+**Commit:** 262ff8e · **Deploy:** edge function `add-player` v1 → v2, verified live
+(boots, returns its own 401 and CORS 200). Vercel frontend pushed; publish not
+confirmed from here — the Vercel MCP token has no `tof2` scope and the edge was
+serving a 12-hour-cached `index.html`. Not blocking: the fix is server-side, and
+the old UI already renders the function's `message`, so Carl gets the player and
+the explanation either way. Only the amber styling waits on the publish.
 **Gates:** build ✓ · tests 97/97 ✓
 
 **Flags:**
