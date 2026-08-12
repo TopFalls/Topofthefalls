@@ -47,7 +47,7 @@ sees everyone's.
 
 **Files:** `supabase/functions/add-player/index.ts`,
 `src/components/admin/PlayersTab.tsx`
-**Commit:** 3e46f2d · **Deploy:** edge function `add-player` v1 → v2, Vercel green
+**Commit:** 262ff8e · **Deploy:** edge function `add-player` v1 → v2, Vercel green
 **Gates:** build ✓ · tests 97/97 ✓
 
 **Flags:**
