@@ -1,0 +1,1003 @@
+<title>Top of the Falls — League Setup Questions</title>
+
+<style>
+  :root {
+    --paper:      #F5F1E8;
+    --card:       #FFFFFF;
+    --ink:        #1B1814;
+    --ink-soft:   #5A5348;
+    --ink-faint:  #8A8172;
+    --rule:       #DED7C8;
+    --cloth:      #1F7A4D;
+    --cloth-soft: #E4EFE8;
+    --chalk:      #3E6D9C;
+    --amber:      #C68B2C;
+    --amber-soft: #FBF1DE;
+    --shadow:     0 1px 2px rgba(27,24,20,.06), 0 4px 14px rgba(27,24,20,.05);
+
+    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans:  ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono:  ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #12100E;
+      --card:       #1C1917;
+      --ink:        #EDE7DA;
+      --ink-soft:   #ADA495;
+      --ink-faint:  #7C7466;
+      --rule:       #332E28;
+      --cloth:      #4FB07B;
+      --cloth-soft: #17291F;
+      --chalk:      #7FA9D4;
+      --amber:      #E0A94A;
+      --amber-soft: #2A2113;
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #12100E;
+    --card:       #1C1917;
+    --ink:        #EDE7DA;
+    --ink-soft:   #ADA495;
+    --ink-faint:  #7C7466;
+    --rule:       #332E28;
+    --cloth:      #4FB07B;
+    --cloth-soft: #17291F;
+    --chalk:      #7FA9D4;
+    --amber:      #E0A94A;
+    --amber-soft: #2A2113;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 18px 140px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap { max-width: 40rem; margin: 0 auto; }
+
+  /* ---------- masthead ---------- */
+  header.mast {
+    padding: 44px 0 28px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 32px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--cloth);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 8vw, 2.9rem);
+    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0 0 16px;
+  }
+  .standfirst {
+    font-size: 1.02rem;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 34rem;
+  }
+  .howto {
+    margin-top: 26px;
+    background: var(--cloth-soft);
+    border-left: 3px solid var(--cloth);
+    padding: 16px 18px;
+    border-radius: 0 6px 6px 0;
+  }
+  .howto p { margin: 0 0 8px; font-size: .95rem; }
+  .howto p:last-child { margin-bottom: 0; }
+  .howto strong { color: var(--cloth); }
+
+  /* ---------- sections ---------- */
+  section { margin: 0 0 40px; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .sec-head h2 {
+    font-family: var(--serif);
+    font-size: 1.45rem;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -.01em;
+  }
+  .sec-head .letter {
+    font-family: var(--mono);
+    font-size: .78rem;
+    color: var(--chalk);
+    letter-spacing: .1em;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .keep-all {
+    font-family: var(--sans);
+    font-size: .8rem;
+    color: var(--cloth);
+    background: transparent;
+    border: 1px solid var(--cloth);
+    border-radius: 999px;
+    padding: 5px 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .keep-all:hover, .keep-all:focus-visible { background: var(--cloth-soft); }
+
+  /* ---------- questions ---------- */
+  .q {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px 17px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .q.answered { border-color: var(--cloth); }
+  .q.needs { border-left: 3px solid var(--amber); }
+
+  .q-text {
+    font-weight: 600;
+    margin: 0 0 8px;
+    font-size: 1.02rem;
+    text-wrap: pretty;
+  }
+  .q-num {
+    font-family: var(--mono);
+    font-size: .72rem;
+    color: var(--ink-faint);
+    letter-spacing: .08em;
+  }
+  .q-now {
+    font-size: .9rem;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+  .q-now code {
+    font-family: var(--mono);
+    font-size: .84rem;
+    background: var(--cloth-soft);
+    color: var(--cloth);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .q-now.ask code { background: var(--amber-soft); color: var(--amber); }
+
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .opts label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: .92rem;
+    cursor: pointer;
+    background: var(--paper);
+    user-select: none;
+  }
+  .opts input { accent-color: var(--cloth); margin: 0; }
+  .opts label:has(input:checked) {
+    border-color: var(--cloth);
+    background: var(--cloth-soft);
+    color: var(--cloth);
+    font-weight: 600;
+  }
+  .opts label:focus-within { outline: 2px solid var(--chalk); outline-offset: 2px; }
+
+  .note {
+    width: 100%;
+    font-family: var(--sans);
+    font-size: .95rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 9px 11px;
+    resize: vertical;
+  }
+  .note:focus-visible { outline: 2px solid var(--chalk); outline-offset: 1px; border-color: var(--chalk); }
+  .note::placeholder { color: var(--ink-faint); }
+
+  /* ---------- checklist question ---------- */
+  .checks { display: grid; gap: 7px; margin-bottom: 10px; }
+  .checks label {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: .95rem;
+    cursor: pointer;
+    line-height: 1.45;
+  }
+  .checks input { accent-color: var(--cloth); margin-top: 4px; flex-shrink: 0; }
+
+  /* ---------- finish ---------- */
+  .finish {
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 22px 20px;
+    background: var(--card);
+  }
+  .finish h2 { font-family: var(--serif); font-size: 1.4rem; margin: 0 0 10px; }
+  .finish p { color: var(--ink-soft); font-size: .95rem; margin: 0 0 16px; }
+  .btn {
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--paper);
+    background: var(--cloth);
+    border: none;
+    border-radius: 7px;
+    padding: 13px 22px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:focus-visible { outline: 2px solid var(--chalk); outline-offset: 3px; }
+  #out {
+    width: 100%;
+    margin-top: 16px;
+    min-height: 220px;
+    font-family: var(--mono);
+    font-size: .8rem;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 12px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .hint { font-size: .85rem; color: var(--ink-faint); margin-top: 10px; }
+
+  /* ---------- progress bar ---------- */
+  .progress {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: var(--card);
+    border-top: 1px solid var(--rule);
+    padding: 11px 18px calc(11px + env(safe-area-inset-bottom));
+    font-size: .85rem;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10;
+  }
+  .progress .bar {
+    flex: 1;
+    height: 5px;
+    background: var(--rule);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress .bar span {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: var(--cloth);
+    transition: width .25s ease;
+  }
+  .progress .count { font-family: var(--mono); font-size: .8rem; white-space: nowrap; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Top of the Falls · Great Falls, Montana</p>
+    <h1>How the league should run</h1>
+    <p class="standfirst">
+      The app already works close to the way you described it. This walks through every rule
+      it currently follows so you can confirm what's right and flag what isn't.
+    </p>
+    <div class="howto">
+      <p><strong>How to use this:</strong> each question shows what the app does <em>today</em>.
+      If that's right, tap <em>Keep it</em>. If not, tap <em>Change it</em> and say what it should be.</p>
+      <p>If a whole section is already correct, use <strong>Keep all in this section</strong> at the top of it.</p>
+      <p>When you're done, hit the green button at the bottom and send us what it gives you.</p>
+    </div>
+  </header>
+
+  <!-- ================= A ================= -->
+  <section data-sec="A">
+    <div class="sec-head">
+      <h2><span class="letter">Section A</span>The list</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">A1</span> How far up the list can a player challenge?</p>
+      <p class="q-now">Now: <code>2 spots above you</code></p>
+      <div class="opts">
+        <label><input type="radio" name="A1" value="Keep"> Keep it</label>
+        <label><input type="radio" name="A1" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how many spots?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">A2</span> Does a brand-new player get a different reach on their first challenge?</p>
+      <p class="q-now">Now: <code>same 2 spots</code></p>
+      <div class="opts">
+        <label><input type="radio" name="A2" value="Keep"> Keep it</label>
+        <label><input type="radio" name="A2" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — what should a new player get?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">A3</span> Where does a new player join the list?</p>
+      <p class="q-now">Now: <code>added at the bottom</code></p>
+      <div class="opts">
+        <label><input type="radio" name="A3" value="Keep"> Keep it</label>
+        <label><input type="radio" name="A3" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — e.g. you pick the spot, or place by Fargo rating">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">A4</span> When a challenger wins, what happens to the list?</p>
+      <p class="q-now">Now: <code>winner takes the spot, everyone passed moves down one</code></p>
+      <div class="opts">
+        <label><input type="radio" name="A4" value="Keep"> Keep it</label>
+        <label><input type="radio" name="A4" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — describe how it should move">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">A5</span> Does the player at #1 have to defend their spot on any schedule?</p>
+      <p class="q-now">Now: <code>no — no obligation on #1</code></p>
+      <div class="opts">
+        <label><input type="radio" name="A5" value="Keep"> Keep it</label>
+        <label><input type="radio" name="A5" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — what should #1 have to do?">
+    </div>
+  </section>
+
+  <!-- ================= B ================= -->
+  <section data-sec="B">
+    <div class="sec-head">
+      <h2><span class="letter">Section B</span>Challenges</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">B1</span> How many challenges can a player issue per week?</p>
+      <p class="q-now">Now: <code>2 per week</code></p>
+      <div class="opts">
+        <label><input type="radio" name="B1" value="Keep"> Keep it</label>
+        <label><input type="radio" name="B1" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how many?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">B2</span> How long does someone have to accept or decline a challenge?</p>
+      <p class="q-now">Now: <code>48 hours</code></p>
+      <div class="opts">
+        <label><input type="radio" name="B2" value="Keep"> Keep it</label>
+        <label><input type="radio" name="B2" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how long?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">B3</span> What happens if someone ignores a challenge and the clock runs out?</p>
+      <p class="q-now ask">Needs your call: <code>tell us what should happen</code></p>
+      <div class="opts">
+        <label><input type="radio" name="B3" value="Forfeit"> Counts as a loss</label>
+        <label><input type="radio" name="B3" value="Expires"> Just expires, no penalty</label>
+        <label><input type="radio" name="B3" value="Other"> Something else</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">B4</span> What happens when someone <em>declines</em> a challenge outright?</p>
+      <p class="q-now ask">Needs your call: <code>tell us what should happen</code></p>
+      <div class="opts">
+        <label><input type="radio" name="B4" value="Forfeit"> Counts as a loss, challenger takes the spot</label>
+        <label><input type="radio" name="B4" value="NoPenalty"> No penalty</label>
+        <label><input type="radio" name="B4" value="Other"> Something else</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">B5</span> Can a player be challenged by two people at once?</p>
+      <p class="q-now ask">Needs your call: <code>tell us what should happen</code></p>
+      <div class="opts">
+        <label><input type="radio" name="B5" value="One"> No — one at a time</label>
+        <label><input type="radio" name="B5" value="Many"> Yes — they can stack up</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+  </section>
+
+  <!-- ================= C ================= -->
+  <section data-sec="C">
+    <div class="sec-head">
+      <h2><span class="letter">Section C</span>Playing the match</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">C1</span> How long do two players have to actually play the match once it's on?</p>
+      <p class="q-now">Now: <code>10 days</code></p>
+      <div class="opts">
+        <label><input type="radio" name="C1" value="Keep"> Keep it</label>
+        <label><input type="radio" name="C1" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how long?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">C2</span> How long is a race?</p>
+      <p class="q-now">Now: <code>race to 6 minimum, no maximum</code></p>
+      <div class="opts">
+        <label><input type="radio" name="C2" value="Keep"> Keep it</label>
+        <label><input type="radio" name="C2" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — what should the race be?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">C3</span> Who picks which game gets played?</p>
+      <p class="q-now ask">Needs your call: <code>tell us who decides</code></p>
+      <div class="opts">
+        <label><input type="radio" name="C3" value="Challenger"> The challenger</label>
+        <label><input type="radio" name="C3" value="Challenged"> The one being challenged</label>
+        <label><input type="radio" name="C3" value="Agree"> They agree between them</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">C4</span> Are these the right places to play?</p>
+      <p class="q-now">Now: <code>Silver Spur · Lido · Black Eagle Country Club</code></p>
+      <div class="opts">
+        <label><input type="radio" name="C4" value="Keep"> That's all of them</label>
+        <label><input type="radio" name="C4" value="Change"> Add or remove one</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — which to add or drop?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">C5</span> Who reports the score when the match is done?</p>
+      <p class="q-now ask">Needs your call: <code>tell us who reports</code></p>
+      <div class="opts">
+        <label><input type="radio" name="C5" value="Winner"> The winner</label>
+        <label><input type="radio" name="C5" value="Either"> Either player</label>
+        <label><input type="radio" name="C5" value="Admin"> Only you</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">C6</span> Does the other player have to confirm the score before it counts?</p>
+      <p class="q-now">Now: <code>yes — the other player confirms</code></p>
+      <div class="opts">
+        <label><input type="radio" name="C6" value="Keep"> Keep it</label>
+        <label><input type="radio" name="C6" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how should it work?">
+    </div>
+  </section>
+
+  <!-- ================= D ================= -->
+  <section data-sec="D">
+    <div class="sec-head">
+      <h2><span class="letter">Section D</span>After a match — who waits</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">D1</span> You defended your spot and won. When can you challenge again?</p>
+      <p class="q-now">Now: <code>right away</code></p>
+      <div class="opts">
+        <label><input type="radio" name="D1" value="Keep"> Keep it</label>
+        <label><input type="radio" name="D1" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how long should they wait?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">D2</span> You won moving up the list. When can you challenge again?</p>
+      <p class="q-now">Now: <code>24 hours — including wins by forfeit</code></p>
+      <div class="opts">
+        <label><input type="radio" name="D2" value="Keep"> Keep it</label>
+        <label><input type="radio" name="D2" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how long?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">D3</span> You lost. What can you do next?</p>
+      <p class="q-now">Now: <code>defend any time, but wait 7 days to challenge up</code></p>
+      <div class="opts">
+        <label><input type="radio" name="D3" value="Keep"> Keep it</label>
+        <label><input type="radio" name="D3" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how should it work?">
+    </div>
+  </section>
+
+  <!-- ================= E ================= -->
+  <section data-sec="E">
+    <div class="sec-head">
+      <h2><span class="letter">Section E</span>Sitting out, and the wash</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">E1</span> What happens to someone who goes inactive?</p>
+      <p class="q-now">Now: <code>after 30 days, drops 2 spots for every 30 days out</code></p>
+      <div class="opts">
+        <label><input type="radio" name="E1" value="Keep"> Keep it</label>
+        <label><input type="radio" name="E1" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how far and how often?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">E2</span> When they come back, can they challenge straight away?</p>
+      <p class="q-now">Now: <code>defend, or wait 7 days to challenge up — last player on the list waits 24 hours</code></p>
+      <div class="opts">
+        <label><input type="radio" name="E2" value="Keep"> Keep it</label>
+        <label><input type="radio" name="E2" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how should it work?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">E3</span> Someone hasn't played in 90 days. What should the app do?</p>
+      <p class="q-now">Now: <code>flags them for you — removal is your call</code></p>
+      <div class="opts">
+        <label><input type="radio" name="E3" value="Keep"> Keep it</label>
+        <label><input type="radio" name="E3" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — should it remove them automatically?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">E4</span> Two players can't agree on a time — the wash.</p>
+      <p class="q-now">Now: <code>challenger sits 24 hours, the challenged player may challenge up right away</code></p>
+      <div class="opts">
+        <label><input type="radio" name="E4" value="Keep"> Keep it</label>
+        <label><input type="radio" name="E4" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — what should happen?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">E5</span> Who can call a wash?</p>
+      <p class="q-now">Now: <code>either player raises it, you decide it</code></p>
+      <div class="opts">
+        <label><input type="radio" name="E5" value="Keep"> Keep it</label>
+        <label><input type="radio" name="E5" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — who should?">
+    </div>
+  </section>
+
+  <!-- ================= F ================= -->
+  <section data-sec="F">
+    <div class="sec-head">
+      <h2><span class="letter">Section F</span>The games</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">F1</span> Are these the right games?</p>
+      <p class="q-now">Now: <code>8 Ball · 9 Ball · 10 Ball · Saratoga</code></p>
+      <div class="opts">
+        <label><input type="radio" name="F1" value="Keep"> That's all of them</label>
+        <label><input type="radio" name="F1" value="Change"> Add or remove one</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — which?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">F2</span> Saratoga is limited to the top 20 players. Still right?</p>
+      <p class="q-now">Now: <code>top 20 only</code></p>
+      <div class="opts">
+        <label><input type="radio" name="F2" value="Keep"> Keep it</label>
+        <label><input type="radio" name="F2" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — who can play it?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">F3</span> Should a player's record be broken out per game, or just one overall record?</p>
+      <p class="q-now">Now: <code>tracked separately for each game, plus an overall</code></p>
+      <div class="opts">
+        <label><input type="radio" name="F3" value="Keep"> Keep it</label>
+        <label><input type="radio" name="F3" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — what should it show?">
+    </div>
+  </section>
+
+  <!-- ================= G ================= -->
+  <section data-sec="G">
+    <div class="sec-head">
+      <h2><span class="letter">Section G</span>Money</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">G1</span> Right now the app only <em>keeps a record</em> of money — it doesn't take payments. Is that what you want for now?</p>
+      <p class="q-now">Now: <code>record-keeping only, no card payments</code></p>
+      <div class="opts">
+        <label><input type="radio" name="G1" value="Keep"> That's fine for now</label>
+        <label><input type="radio" name="G1" value="Change"> I want real payments</label>
+      </div>
+      <input class="note" type="text" placeholder="If you want payments — who pays what, and how?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">G2</span> What is money actually collected for?</p>
+      <p class="q-now ask">Needs your call: <code>tell us in your own words</code></p>
+      <textarea class="note" rows="2" placeholder="e.g. dues, match fees, tournament pot, prize fund"></textarea>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">G3</span> Who should be able to see the money side?</p>
+      <p class="q-now ask">Needs your call: <code>tell us who sees it</code></p>
+      <div class="opts">
+        <label><input type="radio" name="G3" value="AdminOnly"> Only you</label>
+        <label><input type="radio" name="G3" value="OwnBalance"> Each player sees what they owe</label>
+        <label><input type="radio" name="G3" value="Everyone"> Everyone sees everything</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+  </section>
+
+  <!-- ================= H ================= -->
+  <section data-sec="H">
+    <div class="sec-head">
+      <h2><span class="letter">Section H</span>What players get told</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q needs">
+      <p class="q-text"><span class="q-num">H1</span> Tick everything a player should be notified about.</p>
+      <p class="q-now ask">Needs your call: <code>tick all that apply</code></p>
+      <div class="checks">
+        <label><input type="checkbox" name="H1" value="Someone challenged me"> Someone challenged me</label>
+        <label><input type="checkbox" name="H1" value="My challenge was accepted or declined"> My challenge was accepted or declined</label>
+        <label><input type="checkbox" name="H1" value="A time and place got set"> A time and place got set</label>
+        <label><input type="checkbox" name="H1" value="A score was posted that needs confirming"> A score was posted that needs my confirmation</label>
+        <label><input type="checkbox" name="H1" value="My spot on the list changed"> My spot on the list changed</label>
+        <label><input type="checkbox" name="H1" value="My challenge is about to expire"> My challenge is about to expire</label>
+        <label><input type="checkbox" name="H1" value="I am about to drop for inactivity"> I'm about to drop for sitting out</label>
+        <label><input type="checkbox" name="H1" value="League announcements from Carl"> Announcements from you</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything else they should hear about?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">H2</span> Should you be able to send a message to the whole league from the app?</p>
+      <p class="q-now ask">Needs your call: <code>not built yet — say if you want it</code></p>
+      <div class="opts">
+        <label><input type="radio" name="H2" value="Yes"> Yes, I'd use that</label>
+        <label><input type="radio" name="H2" value="No"> No, I'll use Facebook</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+  </section>
+
+  <!-- ================= I ================= -->
+  <section data-sec="I">
+    <div class="sec-head">
+      <h2><span class="letter">Section I</span>What players can see about each other</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">I1</span> Right now each player sees only their own record. You see everyone's. Right?</p>
+      <p class="q-now">Now: <code>records are private, admin sees all</code></p>
+      <div class="opts">
+        <label><input type="radio" name="I1" value="Keep"> Keep it</label>
+        <label><input type="radio" name="I1" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — who should see what?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">I2</span> Should a player see their head-to-head record against someone before challenging them?</p>
+      <p class="q-now">Now: <code>yes — only matches you played in</code></p>
+      <div class="opts">
+        <label><input type="radio" name="I2" value="Keep"> Keep it</label>
+        <label><input type="radio" name="I2" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — what should they see?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">I3</span> Fargo ratings — who should see those?</p>
+      <p class="q-now">Now: <code>visible to everyone</code></p>
+      <div class="opts">
+        <label><input type="radio" name="I3" value="Keep"> Keep it</label>
+        <label><input type="radio" name="I3" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — who should see them?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">I4</span> The home page announces results publicly — "A beat B, 7–5". Happy with that?</p>
+      <p class="q-now">Now: <code>results are announced to everyone</code></p>
+      <div class="opts">
+        <label><input type="radio" name="I4" value="Keep"> Keep it</label>
+        <label><input type="radio" name="I4" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — what should it say?">
+    </div>
+  </section>
+
+  <!-- ================= J ================= -->
+  <section data-sec="J">
+    <div class="sec-head">
+      <h2><span class="letter">Section J</span>Your controls</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">J1</span> Should anyone besides you be able to run the league in the app?</p>
+      <p class="q-now">Now: <code>you're the only one</code></p>
+      <div class="opts">
+        <label><input type="radio" name="J1" value="Keep"> Keep it that way</label>
+        <label><input type="radio" name="J1" value="Change"> Add someone</label>
+      </div>
+      <input class="note" type="text" placeholder="If adding — who, and what should they be able to do?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">J2</span> You can move players up and down the list by hand. Keep that?</p>
+      <p class="q-now">Now: <code>yes, you can reorder anyone</code></p>
+      <div class="opts">
+        <label><input type="radio" name="J2" value="Keep"> Keep it</label>
+        <label><input type="radio" name="J2" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">J3</span> When two players disagree about a result, how should it get settled?</p>
+      <p class="q-now">Now: <code>it comes to you to decide</code></p>
+      <div class="opts">
+        <label><input type="radio" name="J3" value="Keep"> Keep it</label>
+        <label><input type="radio" name="J3" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how should disputes work?">
+    </div>
+  </section>
+
+  <!-- ================= K ================= -->
+  <section data-sec="K">
+    <div class="sec-head">
+      <h2><span class="letter">Section K</span>Getting players in</h2>
+      <button class="keep-all" type="button">Keep all in this section</button>
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">K1</span> Today: you add a player, then they get an email with a 6-digit code to claim their name. Right?</p>
+      <p class="q-now">Now: <code>you add them, they claim by email code</code></p>
+      <div class="opts">
+        <label><input type="radio" name="K1" value="Keep"> Keep it</label>
+        <label><input type="radio" name="K1" value="Change"> Change it</label>
+      </div>
+      <input class="note" type="text" placeholder="If changing — how should people get in?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">K2</span> Should someone be able to ask to join without you adding them first?</p>
+      <p class="q-now ask">Needs your call: <code>not built yet — say if you want it</code></p>
+      <div class="opts">
+        <label><input type="radio" name="K2" value="Yes"> Yes, with my approval</label>
+        <label><input type="radio" name="K2" value="No"> No, I'll add everyone myself</label>
+      </div>
+      <input class="note" type="text" placeholder="Anything to add?">
+    </div>
+
+    <div class="q">
+      <p class="q-text"><span class="q-num">K3</span> Some of your 119 players don't have email, or won't use an app. What should happen with them?</p>
+      <p class="q-now ask">Needs your call: <code>this one matters — tell us how you want to handle it</code></p>
+      <textarea class="note" rows="3" placeholder="e.g. leave them on the list and I'll enter their matches myself"></textarea>
+    </div>
+  </section>
+
+  <!-- ================= L ================= -->
+  <section data-sec="L">
+    <div class="sec-head">
+      <h2><span class="letter">Section L</span>Anything we've missed</h2>
+    </div>
+
+    <div class="q needs">
+      <p class="q-text"><span class="q-num">L1</span> What bugs you most about the app as it is right now?</p>
+      <textarea class="note" rows="3" placeholder="Be blunt — this is the most useful box on the page"></textarea>
+    </div>
+
+    <div class="q needs">
+      <p class="q-text"><span class="q-num">L2</span> What do you still do on paper, by text, or in your head that the app should be doing?</p>
+      <textarea class="note" rows="3" placeholder="Anything you're tracking outside the app"></textarea>
+    </div>
+
+    <div class="q needs">
+      <p class="q-text"><span class="q-num">L3</span> When you show this to a new player, what's the first thing you want them to see?</p>
+      <textarea class="note" rows="2" placeholder="e.g. the list, their own record, who they can challenge"></textarea>
+    </div>
+
+    <div class="q needs">
+      <p class="q-text"><span class="q-num">L4</span> Is there a rule in your league that this questionnaire never asked about?</p>
+      <textarea class="note" rows="3" placeholder="Anything at all — house rules, tournaments, handicaps, anything"></textarea>
+    </div>
+
+    <div class="q needs">
+      <p class="q-text"><span class="q-num">L5</span> Anything else on your mind?</p>
+      <textarea class="note" rows="3" placeholder="Optional"></textarea>
+    </div>
+  </section>
+
+  <!-- ================= finish ================= -->
+  <div class="finish">
+    <h2>Done? Send it back</h2>
+    <p>Press the button and your answers appear below as plain text. Copy the whole
+      block and text or email it back — that's everything we need.</p>
+    <button class="btn" id="build" type="button">Put my answers together</button>
+    <textarea id="out" readonly placeholder="Your answers will appear here."></textarea>
+    <p class="hint">On a phone: press and hold in the box, choose Select All, then Copy.</p>
+  </div>
+
+</div>
+
+<div class="progress">
+  <span class="count" id="count">0 answered</span>
+  <span class="bar"><span id="fill"></span></span>
+</div>
+
+<script>
+  (function () {
+    var SECTION_NAMES = {
+      A: 'The list', B: 'Challenges', C: 'Playing the match',
+      D: 'After a match', E: 'Sitting out, and the wash', F: 'The games',
+      G: 'Money', H: 'What players get told',
+      I: 'What players can see about each other', J: 'Your controls',
+      K: 'Getting players in', L: "Anything we've missed"
+    };
+
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.q'));
+
+    function isAnswered(card) {
+      var radios = card.querySelectorAll('input[type="radio"]');
+      if (radios.length) {
+        for (var i = 0; i < radios.length; i++) { if (radios[i].checked) return true; }
+      }
+      var boxes = card.querySelectorAll('input[type="checkbox"]');
+      for (var j = 0; j < boxes.length; j++) { if (boxes[j].checked) return true; }
+      var notes = card.querySelectorAll('.note');
+      for (var k = 0; k < notes.length; k++) {
+        if (notes[k].value.trim() !== '') return true;
+      }
+      return false;
+    }
+
+    function refresh() {
+      var done = 0;
+      cards.forEach(function (card) {
+        var ok = isAnswered(card);
+        card.classList.toggle('answered', ok);
+        if (ok) done++;
+      });
+      var pct = cards.length ? Math.round((done / cards.length) * 100) : 0;
+      document.getElementById('count').textContent = done + ' of ' + cards.length;
+      document.getElementById('fill').style.width = pct + '%';
+    }
+
+    document.addEventListener('input', refresh);
+    document.addEventListener('change', refresh);
+
+    // "Keep all in this section"
+    Array.prototype.forEach.call(document.querySelectorAll('.keep-all'), function (btn) {
+      btn.addEventListener('click', function () {
+        var sec = btn.closest('section');
+        Array.prototype.forEach.call(sec.querySelectorAll('.q'), function (card) {
+          var keep = card.querySelector('input[type="radio"][value="Keep"]');
+          if (keep) keep.checked = true;
+        });
+        refresh();
+      });
+    });
+
+    document.getElementById('build').addEventListener('click', function () {
+      var lines = [];
+      lines.push('TOP OF THE FALLS — CARL’S ANSWERS');
+      lines.push(new Date().toLocaleDateString());
+      lines.push('');
+
+      Array.prototype.forEach.call(document.querySelectorAll('section[data-sec]'), function (sec) {
+        var letter = sec.getAttribute('data-sec');
+        var body = [];
+
+        Array.prototype.forEach.call(sec.querySelectorAll('.q'), function (card) {
+          var numEl = card.querySelector('.q-num');
+          var num = numEl ? numEl.textContent.trim() : '';
+          var textEl = card.querySelector('.q-text');
+          var question = textEl ? textEl.textContent.replace(num, '').trim() : '';
+
+          var picked = card.querySelector('input[type="radio"]:checked');
+          var boxes = card.querySelectorAll('input[type="checkbox"]:checked');
+          var notes = card.querySelectorAll('.note');
+          var noteText = [];
+          Array.prototype.forEach.call(notes, function (n) {
+            if (n.value.trim() !== '') noteText.push(n.value.trim());
+          });
+
+          var answer = '';
+          if (picked) answer = picked.value;
+          if (boxes.length) {
+            var ticked = [];
+            Array.prototype.forEach.call(boxes, function (b) { ticked.push(b.value); });
+            answer = ticked.join('; ');
+          }
+
+          if (!answer && !noteText.length) return;
+
+          body.push(num + '  ' + question);
+          if (answer) body.push('    -> ' + answer);
+          noteText.forEach(function (t) { body.push('    note: ' + t); });
+          body.push('');
+        });
+
+        if (body.length) {
+          lines.push('== ' + letter + '. ' + (SECTION_NAMES[letter] || '') + ' ==');
+          lines = lines.concat(body);
+        }
+      });
+
+      var unanswered = cards.filter(function (c) { return !isAnswered(c); }).length;
+      if (unanswered) {
+        lines.push('(' + unanswered + ' question' + (unanswered === 1 ? '' : 's') + ' left blank)');
+      }
+
+      var out = document.getElementById('out');
+      out.value = lines.join('\n');
+      out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      out.focus();
+      out.select();
+      try { document.execCommand('copy'); } catch (e) { /* manual copy fallback */ }
+    });
+
+    refresh();
+  })();
+</script>
