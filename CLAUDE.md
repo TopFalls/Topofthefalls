@@ -16,7 +16,9 @@ into the original app's resources.
 - Vercel project: `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`), team `Totf` / `tof2` (`team_TiDDLGgPBC8TlMQKmrNcFNl8`)
 - Supabase project/ref: `dpbgdisezxlttwrxqanu`, org `Top of the Falls` (`qlsdgysivqxpigttcaon`)
 - Supabase URL: `https://dpbgdisezxlttwrxqanu.supabase.co`
-- Public URL: `https://topofthefalls.vercel.app` (no custom domain)
+- Public URL: `https://topofthefalls.online` (custom domain, live and serving;
+  `www.` too). `https://topofthefalls.vercel.app` is the Vercel alias and also
+  works. Give people the `.online` address.
 
 Never substitute a value from one of the apps listed below.
 
@@ -27,7 +29,7 @@ one. Never point it at the other two.
 
 | App | GitHub | Vercel | Supabase | URL |
 |---|---|---|---|---|
-| **This instance (Carl's)** | `TopFalls/Topofthefalls` | `topofthefalls` (team `tof2`) | `dpbgdisezxlttwrxqanu` | `topofthefalls.vercel.app` |
+| **This instance (Carl's)** | `TopFalls/Topofthefalls` | `topofthefalls` (team `tof2`) | `dpbgdisezxlttwrxqanu` | `topofthefalls.online` |
 | Original TOF app (Chase's) | `cdalin1985/TOF` | `tof-app` | `sqcqmovskpoyutfyslym` | `tof-app-theta.vercel.app` |
 | TOC.Monster / Top of the Capital | `cdalin1985/claude-agent0toc` | `toc-app` | `toc1` | `toc.monster` |
 
@@ -70,7 +72,19 @@ defaults (identical to the upstream app — this is the same league):
 - Mike Birkoski (`disturbingiraq@gmail.com`) holds `admin` access so a second
   league operator can handle admin work
   (`20260814124000_grant_second_admin.sql`)
-- Treasury is a ledger/admin function; no real payment processing is live yet
+- Treasury is a ledger/admin function; no real payment processing is live yet.
+  It is admin-only in the table, both reporting views, **and the activity feed**
+  — `manage-treasury` writes dollar amounts into feed headlines, so
+  `treasury_entry_*` rows are gated there too
+- **The app is browsable without an account.** Signed-out visitors get `/`,
+  `/rankings` and `/activity`, read-only. The `anon` role's entire reach is
+  `SELECT` on six views — `public_players`, `public_rankings`,
+  `public_player_metrics`, `public_activity_feed`, `public_live_matches`,
+  `public_league_settings` — and nothing else in the schema. Those views name
+  their columns explicitly so a new column is never published by accident, and
+  the default-privilege grant that would re-open the next new table to `anon` is
+  revoked. Widening that surface is a deliberate act: add the column to the
+  view, and expect `test/guest-access.test.mjs` to argue with you
 - **The league runs continuously — there are no seasons.** No season start, no
   offseason, no rollover; the challenge list is always live. Never use season
   framing in UI copy, admin labels, emails or customer docs — say "the list" or
