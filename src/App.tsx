@@ -3,11 +3,13 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useAuthStore } from './stores/authStore';
 
 // Lazy-loaded pages for code splitting
 const LoginPage        = React.lazy(() => import('./pages/LoginPage'));
 const ClaimPage        = React.lazy(() => import('./pages/ClaimPage'));
 const HomePage         = React.lazy(() => import('./pages/HomePage'));
+const GuestHomePage    = React.lazy(() => import('./pages/GuestHomePage'));
 const RankingsPage     = React.lazy(() => import('./pages/RankingsPage'));
 const PlayerPage       = React.lazy(() => import('./pages/PlayerPage'));
 const ChallengePage    = React.lazy(() => import('./pages/ChallengePage'));
@@ -38,6 +40,15 @@ const Suspense: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </React.Suspense>
 );
 
+// The front door serves two different people. A signed-in player gets their own
+// home screen — challenges waiting, matches to confirm, their record. Somebody
+// who has just heard about the league and typed the address in gets the guest
+// page: the list, live scores, what happened lately, and a way in.
+const HomeRoute: React.FC = () => {
+  const session = useAuthStore((s) => s.session);
+  return session ? <HomePage /> : <GuestHomePage />;
+};
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -50,9 +61,11 @@ export default function App() {
               <Route path="/auth/callback" element={<Suspense><AuthCallbackPage /></Suspense>} />
               {/* Authenticated — unclaimed */}
               <Route path="/claim"         element={<Suspense><ClaimPage /></Suspense>} />
-              {/* Authenticated — claimed */}
-              <Route path="/"              element={<Suspense><HomePage /></Suspense>} />
+              {/* Open to guests, view only — see the guard in Layout */}
+              <Route path="/"              element={<Suspense><HomeRoute /></Suspense>} />
               <Route path="/rankings"      element={<Suspense><RankingsPage /></Suspense>} />
+              <Route path="/activity"      element={<Suspense><ActivityPage /></Suspense>} />
+              {/* Authenticated — claimed */}
               <Route path="/player/:id"    element={<Suspense><PlayerPage /></Suspense>} />
               <Route path="/challenge/:id" element={<Suspense><ChallengePage /></Suspense>} />
               <Route path="/challenges"    element={<Suspense><ChallengesPage /></Suspense>} />
@@ -63,7 +76,6 @@ export default function App() {
               <Route path="/admin"         element={<Suspense><AdminPage /></Suspense>} />
               <Route path="/admin/stats"   element={<Suspense><AdminStatsPage /></Suspense>} />
               <Route path="/treasury"      element={<Suspense><TreasuryPage /></Suspense>} />
-              <Route path="/activity"      element={<Suspense><ActivityPage /></Suspense>} />
               {/* Old simple stats page (PR #8) consolidated into the admin dashboard */}
               <Route path="/stats"         element={<Navigate to="/admin/stats" replace />} />
               <Route path="*"              element={<Navigate to="/" replace />} />

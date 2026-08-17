@@ -21,8 +21,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = previewTheme ?? globalTheme;
 
   const refreshGlobalTheme = useCallback(async () => {
+    // Reads the guest view, not `league_settings`. This runs before anything
+    // knows whether there is a session, and a signed-out visitor cannot read
+    // that table — they would silently get the fallback theme instead of the
+    // league's own. The view carries theme_name and nothing else.
     const { data, error } = await supabase
-      .from('league_settings')
+      .from('public_league_settings')
       .select('theme_name')
       .limit(1)
       .maybeSingle();

@@ -187,6 +187,20 @@ export default function LoginPage() {
               <p className="text-center text-[#A1A1AA] text-sm font-[Barlow] leading-relaxed">
                 We'll email you a 6-digit code. No password needed.
               </p>
+
+              {/* Nobody should have to hand over an email address to find out
+                  what this is. The list, the live scores and the league feed
+                  are all readable without an account. */}
+              <div className="pt-1 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="w-full text-center text-sm font-[Barlow] font-medium pt-4"
+                  style={{ color: 'var(--toc-theme-accent-2)' }}
+                >
+                  Just looking? Browse the league →
+                </button>
+              </div>
             </motion.form>
           ) : (
             <motion.form

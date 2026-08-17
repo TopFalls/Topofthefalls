@@ -352,6 +352,43 @@ export interface Database {
           last_entry_at: string | null;
         };
       };
+      // Guest-readable views (20260817121000). These are the ONLY relations the
+      // `anon` role can reach, so a signed-out visitor sees the ladder and the
+      // league feed and nothing else. Each names its columns in SQL on purpose;
+      // adding a column to a base table does not publish it here.
+      public_players: {
+        Row: Database['public']['Tables']['players']['Row'];
+      };
+      public_rankings: {
+        Row: Database['public']['Tables']['rankings']['Row'];
+      };
+      public_player_metrics: {
+        Row: Database['public']['Tables']['player_reference_metrics']['Row'];
+      };
+      public_activity_feed: {
+        Row: Omit<
+          Database['public']['Tables']['activity_feed']['Row'],
+          'actor_player_id'
+        >;
+      };
+      public_live_matches: {
+        Row: {
+          id: string;
+          player1_id: string;
+          player1_name: string;
+          player1_avatar_url: string | null;
+          player2_id: string;
+          player2_name: string;
+          player2_avatar_url: string | null;
+          discipline: string;
+          race_length: number;
+          venue: string | null;
+          player1_score: number;
+          player2_score: number;
+          started_at: string | null;
+          updated_at: string;
+        };
+      };
     };
     Functions: {
       apply_challenge_decline_forfeit: {
@@ -389,6 +426,8 @@ export type TreasuryEntry = Database['public']['Tables']['treasury_ledger']['Row
 export type ChallengeForfeitureEvent = Database['public']['Tables']['challenge_forfeiture_events']['Row'];
 export type TreasuryLedgerEffect = Database['public']['Views']['treasury_ledger_effects']['Row'];
 export type TreasurySummary = Database['public']['Views']['treasury_summary']['Row'];
+export type LiveMatch = Database['public']['Views']['public_live_matches']['Row'];
+export type PublicActivityFeedItem = Database['public']['Views']['public_activity_feed']['Row'];
 export type LeagueSettings = Database['public']['Tables']['league_settings']['Row'];
 export type AuditEvent = Database['public']['Tables']['audit_events']['Row'];
 

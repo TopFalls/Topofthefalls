@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRankings } from '../hooks/useRankings';
 import { useAuthStore } from '../stores/authStore';
 import { Avatar } from '../components/Avatar';
+import { GuestBar } from '../components/GuestBar';
 import { EKGLine } from '../components/EKGLine';
 import { Badge } from '../components/Badge';
 import { RankingRowSkeleton } from '../components/Skeleton';
@@ -25,6 +26,7 @@ function RankCard({
   activeRanks,
   index,
   challengeMode,
+  isGuest,
 }: {
   rp: RankedPlayer;
   myPosition: number | null;
@@ -32,6 +34,7 @@ function RankCard({
   activeRanks: Map<number, number>;
   index: number;
   challengeMode: boolean;
+  isGuest: boolean;
 }) {
   const navigate = useNavigate();
   const pos       = rp.ranking.position;
@@ -56,7 +59,10 @@ function RankCard({
     >
       <div
         className={[
-          'glass-card p-3 flex items-center gap-3 cursor-pointer',
+          'glass-card p-3 flex items-center gap-3',
+          // A player's page shows their record, which is theirs alone. Guests
+          // get the list, not the people on it, so the row is inert for them.
+          isGuest ? '' : 'cursor-pointer',
           'transition-all duration-200',
           isTop3 ? 'gold-shimmer' : '',
           // Inactive players hold their spot but are visibly stood down.
@@ -64,7 +70,7 @@ function RankCard({
           showReason && !isInactive ? 'opacity-50' : '',
         ].join(' ')}
         style={isMe ? { borderColor: 'var(--toc-theme-border-strong)', boxShadow: '0 0 16px var(--toc-theme-glow-soft)' } : undefined}
-        onClick={() => navigate(`/player/${rp.player.id}`)}
+        onClick={isGuest ? undefined : () => navigate(`/player/${rp.player.id}`)}
       >
         {/* Rank number */}
         <div className="w-8 text-center shrink-0">
@@ -146,7 +152,8 @@ function RankCard({
 
 export default function RankingsPage() {
   const { data: rankings = [], isLoading, isError, refetch } = useRankings();
-  const { player } = useAuthStore();
+  const { player, session } = useAuthStore();
+  const isGuest = !session;
   const [search, setSearch]   = useState('');
   const [tab, setTab]         = useState<'all' | 'near'>('all');
   const [searchParams]        = useSearchParams();
@@ -178,7 +185,9 @@ export default function RankingsPage() {
   }, [rankings, search, tab, myPosition, player?.id, activeRanks]);
 
   return (
-    <div className="min-h-screen px-4 pt-8 pb-4">
+    <div className={`min-h-screen px-4 pb-4 ${isGuest ? 'pt-3' : 'pt-8'}`}>
+      {isGuest && <GuestBar />}
+
       {/* Header */}
       <div className="text-center mb-6">
         <h1
@@ -253,6 +262,7 @@ export default function RankingsPage() {
                 activeRanks={activeRanks}
                 index={i}
                 challengeMode={challengeMode}
+                isGuest={isGuest}
               />
             ))
         }

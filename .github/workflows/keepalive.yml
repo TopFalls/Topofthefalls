@@ -38,10 +38,13 @@ jobs:
             echo "::error::SUPABASE_URL / SUPABASE_ANON_KEY repository variables are not set. See the comments in this workflow file." >&2
             exit 1
           fi
+          # public_rankings, not rankings: the anon role can only read the
+          # guest views now (20260817122000), so a ping at the base table
+          # comes back 401 and this job would report the project as paused.
           status=$(curl -s -o /dev/null -w '%{http_code}' \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/rankings?select=position&limit=1")
+            "$SUPABASE_URL/rest/v1/public_rankings?select=position&limit=1")
           echo "Supabase keep-alive ping returned HTTP $status"
           if [ "$status" != "200" ]; then
             echo "::error::Keep-alive ping failed (HTTP $status) — project may be paused." >&2

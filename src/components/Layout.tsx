@@ -20,6 +20,10 @@ const NAV_ROUTES = ['/', '/rankings', '/matches', '/notifications', '/settings',
 const showsNav = (path: string) =>
   NAV_ROUTES.some((r) => (r === '/' ? path === '/' : path.startsWith(r)));
 
+// Screens a signed-out visitor may open. Player profile pages are deliberately
+// not here: they show a player's record, which is private to that player.
+const GUEST_ROUTES = ['/', '/rankings', '/activity'];
+
 export const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,7 +95,15 @@ export const Layout: React.FC = () => {
     if (publicPaths.includes(path)) return;
     if (demoMode) return;
 
-    if (!session) { navigate('/login', { replace: true }); return; }
+    if (!session) {
+      // Guests may look, and only look. These three screens read the
+      // guest-only views in the database, so this list and the SQL grants
+      // have to agree — anything not named here bounces to sign-in, and
+      // anything not granted to `anon` would fail even if it did not.
+      if (GUEST_ROUTES.includes(path)) return;
+      navigate('/login', { replace: true });
+      return;
+    }
     if (!player && path !== '/claim') { navigate('/claim', { replace: true }); return; }
     if (player && path === '/claim') { navigate('/', { replace: true }); return; }
   }, [session, player, isLoading, location.pathname, navigate, demoMode]);

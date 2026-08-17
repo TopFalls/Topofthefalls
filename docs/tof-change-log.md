@@ -19,6 +19,90 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-17 — Live scores for the whole league, and a way in for guests
+
+**Carl asked:** *"matches that are using the score board to be displayed live
+for everyone logged in"* and *"we also want a way for guests to log in they get
+view only access to rankings and the league activity"* — guests see live scores
+too.
+
+**Shipped, all live:**
+
+1. **Live scores are visible to everyone.** A match in progress now shows on the
+   home screen for the whole league — both names, the running score, the race
+   and the venue — refreshing every ten seconds. The `matches` table stays
+   private to its two players; widening that policy would have published payment
+   methods and result submissions along with the score. Instead the scoreboard
+   comes from `public_live_matches`, which carries scores only and drops a match
+   the second it stops being played. The card is deliberately not tappable —
+   the match screen reads the private row, so it opens for the two players at
+   the table and nobody else.
+2. **Guests can look without an account.** `topofthefalls.vercel.app` now opens
+   on a guest page — top of the list, live scores, recent league activity, the
+   rules, and a sign-in button — instead of bouncing straight to the login
+   screen. Guests can also open the full list and the full activity feed. Three
+   routes, no more: player profiles, matches, challenges, settings, admin and
+   treasury all still require signing in. Rows on the list are inert for a guest
+   because a player's page shows their record.
+
+**Two things were wrong underneath, both found while building this:**
+
+3. **The treasury was still readable — through the activity feed.** August 14
+   locked the ledger and its two views, but `manage-treasury` also writes a
+   plain-English row into `activity_feed` for every entry (*"Admin added $250.00
+   credit to league treasury · March dues"*), and that feed was `USING (true)`.
+   Any signed-in player could have reconstructed the ledger line by line. No
+   entries exist yet so nothing was actually disclosed, but the path was open.
+   Treasury rows are now admins only. Guests additionally don't see
+   `match_fee_recorded`, which names a player and how they paid.
+4. **`anon` held INSERT, UPDATE, DELETE and TRUNCATE on 15 tables**, including
+   `players` and `rankings` — Supabase's shipped default, with RLS as the only
+   thing standing in the way. Checked before changing anything: every one of
+   those tables denies writes at the policy layer, and a live probe with the
+   public key confirmed it. But one permissive policy added in future would have
+   been the whole defence. `anon` now has SELECT on the six guest views and
+   nothing else at all, and the default-privileges grant that would re-open the
+   next new table is revoked.
+
+**One latent bug fixed on the way.** `ThemeProvider` reads the league theme
+before anything knows whether there's a session. Once `anon` lost
+`league_settings` it would have fallen back to the default theme for every
+guest — invisible today only because the league is set to the same
+`emerald-forest` the fallback uses. It reads a one-column view now.
+
+**Verified against the live system, not assumed.** With the real public key:
+all six guest views return 200; all 21 base tables and admin views return
+`42501`; POST and DELETE against `players`, `rankings`, `activity_feed` and the
+views all return `42501` and no probe row was written. The first write probe
+came back `400 PGRST204` — a bad column name, not a refusal — and was re-run
+with valid columns before being believed.
+
+**Not verified.** The activity-feed policy is confirmed bound with the right
+predicate and is the only policy on the table, but it has not been exercised by
+a real non-admin session: both claimed accounts on this instance are admins, and
+the database connection here is read-only, so neither a test row nor a role
+switch was possible.
+
+**Files:** 4 new migrations, `useLiveMatches`, `LiveMatchesCard`,
+`GuestHomePage`, `GuestBar`, `useRankings`, `ThemeProvider`, `App`, `Layout`,
+`RankingsPage`, `ActivityPage`, `LoginPage`, `HomePage`, `database.ts`,
+`keepalive.yml`, 1 new test file
+**Gates:** build ✓ · tests 110/110 ✓ (98 before, 12 new)
+**Deploy:** 4 migrations applied · frontend via `npx vercel --prod --yes --scope tof2`
+
+**Flags:**
+- The keep-alive workflow pinged `rankings` with the public key and fails the
+  job on anything but a 200. It points at `public_rankings` now. It is still
+  dispatch-only, so this was not live, but it would have broken the day someone
+  enabled the schedule.
+- Realtime is not used for live scores. RLS applies to subscriptions too, so a
+  change to someone else's match is never pushed. Ten-second polling instead.
+- Guest pages are readable by anyone with the URL. That is the request, but it
+  means the roster of 117 names and the league feed are now deliberately public.
+  No emails or phone numbers are involved — `players` holds neither.
+
+---
+
 ## 2026-08-14 — Eight rule and privacy changes from Carl's questionnaire
 
 **Carl asked:** his answers to the 47-question league setup questionnaire

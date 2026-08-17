@@ -13,6 +13,7 @@ import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
 import { Skeleton } from '../components/Skeleton';
 import { LeagueRulesCard } from '../components/LeagueRulesCard';
+import { LiveMatchesCard } from '../components/LiveMatchesCard';
 import type { ActivityFeedItem, Match, Notification, Challenge } from '../types/database';
 import { formatDistanceToNow } from '../utils/time';
 import { LEAGUE } from '../config/league';
@@ -260,6 +261,10 @@ export default function HomePage() {
           </GlassCard>
         </motion.div>
       )}
+
+      {/* Scores from tables in play right now — everyone in the league sees
+          these, not just the two players at the table. */}
+      <LiveMatchesCard />
 
       {/* Player card */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>

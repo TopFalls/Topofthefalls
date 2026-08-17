@@ -5,6 +5,8 @@ import { ChevronLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { QueryError } from '../components/QueryError';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../stores/authStore';
+import { GuestBar } from '../components/GuestBar';
 import { GlassCard } from '../components/GlassCard';
 import type { ActivityFeedItem } from '../types/database';
 import { formatDistanceToNow } from '../utils/time';
@@ -62,14 +64,21 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 export default function ActivityPage() {
   const navigate = useNavigate();
+  const { session } = useAuthStore();
   const [filter, setFilter] = useState<Filter>('all');
   const [limit, setLimit]   = useState(40);
 
+  // Signed-out visitors read the guest view, which leaves out treasury entries
+  // and the match-fee rows that name a player and how they paid. Signed-in
+  // players read the table and see league business as they always have —
+  // minus the treasury, which is admins only.
+  const isGuest = !session;
+
   const { data: feed = [], isLoading, isError, refetch } = useQuery<ActivityFeedItem[]>({
-    queryKey: ['activity-feed-full', filter, limit],
+    queryKey: ['activity-feed-full', filter, limit, isGuest],
     queryFn: async () => {
       let query = supabase
-        .from('activity_feed')
+        .from(isGuest ? 'public_activity_feed' : 'activity_feed')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -82,13 +91,17 @@ export default function ActivityPage() {
   });
 
   return (
-    <div className="min-h-screen px-4 pt-4 pb-8">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-[#9CA3AF] p-2 -ml-2 mb-4"
-      >
-        <ChevronLeft size={18} /> Back
-      </button>
+    <div className={`min-h-screen px-4 pb-8 ${isGuest ? 'pt-3' : 'pt-4'}`}>
+      {isGuest ? (
+        <GuestBar />
+      ) : (
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1 text-[#9CA3AF] p-2 -ml-2 mb-4"
+        >
+          <ChevronLeft size={18} /> Back
+        </button>
+      )}
 
       <h1 className="font-[Bebas_Neue] text-5xl tracking-wide text-[#E8E2D6] mb-1">
         League Activity
@@ -99,7 +112,9 @@ export default function ActivityPage() {
 
       {/* Filter tabs */}
       <div className="flex gap-1 mb-5 bg-[#1A1A1A] rounded-xl p-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-        {FILTERS.map((f) => (
+        {/* Nothing in the treasury filter is visible to a guest, so the tab
+            would always come back empty. Don't offer it. */}
+        {FILTERS.filter((f) => !(isGuest && f.key === 'treasury')).map((f) => (
           <button
             key={f.key}
             onClick={() => { setFilter(f.key); setLimit(40); }}
