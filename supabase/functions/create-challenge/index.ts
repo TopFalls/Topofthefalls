@@ -35,13 +35,13 @@ function canChallenge(
   // a TOC rule the Top of the Falls ruleset does not have.)
   if (theirPos >= myPos) return 'You can only challenge players ranked above you.';
 
-  // TOF rule: Top 11 can only move one spot at a time.
-  if (myPos <= 11) {
+  // TOF rule: Top 10 can only move one spot at a time.
+  if (myPos <= 10) {
     if (theirPos === myPos - 1) return null;
-    return 'Players in the Top 11 can only challenge one spot above them.';
+    return 'Players in the Top 10 can only challenge one spot above them.';
   }
 
-  // TOF rule: spots 12+ may challenge up to the configured challenge range.
+  // TOF rule: spots 11+ may challenge up to the configured challenge range.
   if ((myPos - theirPos) > challengeRange) {
     return `You can only challenge players up to ${challengeRange} spots above you.`;
   }
@@ -122,12 +122,6 @@ serve(async (req) => {
 
     const eligibilityError = canChallenge(myRank, theirRank, challengeRange);
     if (eligibilityError) return new Response(JSON.stringify({ error: eligibilityError }), { status: 400, headers: corsHeaders });
-
-    // Saratoga stays keyed to the list position players actually see (Top 20),
-    // not active rank — it is a league eligibility rule, not a challenge window.
-    if (discipline === 'Saratoga' && (myPos > 20 || theirPos > 20)) {
-      return new Response(JSON.stringify({ error: 'Saratoga is only allowed when both players are ranked in the Top 20.' }), { status: 400, headers: corsHeaders });
-    }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
     const { count: weeklyCount } = await supabase.from('challenges').select('id', { count: 'exact', head: true }).eq('challenger_id', challenger.id).gte('created_at', sevenDaysAgo);

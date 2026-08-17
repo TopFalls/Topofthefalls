@@ -61,12 +61,15 @@ cat supabase/.temp/project-ref 2>/dev/null || true
 Use live `league_settings` and migrations as the source of truth. Current
 defaults (identical to the upstream app — this is the same league):
 
-- Disciplines: 8 Ball, 9 Ball, 10 Ball, Saratoga (Top 20 only)
+- Disciplines: 8 Ball, 9 Ball, 10 Ball, Saratoga (open to every player)
 - Venues: Silver Spur, Lido, Black Eagle Country Club
 - Roster: 117 players, seeded by `20260609141000_seed_tof_roster.sql`
 - Claim flow: email → 6-digit code → claim own unclaimed roster name
 - Carl Higgins is super_admin before claiming his player row
   (`20260729120000_league_admin_bootstrap.sql`)
+- Mike Birkoski (`disturbingiraq@gmail.com`) holds `admin` access so a second
+  league operator can handle admin work
+  (`20260814124000_grant_second_admin.sql`)
 - Treasury is a ledger/admin function; no real payment processing is live yet
 - **The league runs continuously — there are no seasons.** No season start, no
   offseason, no rollover; the challenge list is always live. Never use season
@@ -80,8 +83,8 @@ defaults (identical to the upstream app — this is the same league):
   allow one-click undo. Rankings are never touched by a reset.
 
 The upstream signup triggers hardcoded four personal admin emails. Those are
-demoted here and must not come back — Carl is the sole super_admin on this
-instance.
+demoted here and must not come back. Carl remains the sole super_admin on this
+instance; Mike's separately granted role is admin, not super_admin.
 
 ## Work style
 

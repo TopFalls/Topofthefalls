@@ -52,8 +52,6 @@ export default function ChallengePage() {
     );
   }
 
-  const bothInTop20 = !!myRanking && myRanking.ranking.position <= 20 && target.ranking.position <= 20;
-
   const handleRaceChange = (val: string) => {
     setRaceInput(val);
     const n = parseInt(val, 10);
@@ -69,10 +67,6 @@ export default function ChallengePage() {
 
   const handleSend = async () => {
     if (!discipline || raceError || race < LEAGUE.minRace) return;
-    if (discipline === 'Saratoga' && !bothInTop20) {
-      setError('Saratoga is only allowed when both players are in the Top 20.');
-      return;
-    }
     setSending(true);
     setError('');
     try {
@@ -162,28 +156,22 @@ export default function ChallengePage() {
       <AnimatePresence mode="wait">
         {step === 1 && (
           <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-3">
-            {DISCIPLINES.map((d) => {
-              const isBlockedSaratoga = d.value === 'Saratoga' && !bothInTop20;
-              return (
-                <GlassCard
-                  key={d.value}
-                  hover={!isBlockedSaratoga}
-                  onClick={() => { if (isBlockedSaratoga) return; setDiscipline(d.value); }}
-                  className={`p-5 flex items-center gap-4 ${isBlockedSaratoga ? 'opacity-40 cursor-not-allowed' : ''}`}
-                  glow={discipline === d.value}
-                >
-                  <span className="text-4xl">{d.emoji}</span>
-                  <div className="flex-1">
-                    <div className="font-[Bebas_Neue] text-2xl text-[#E8E2D6]">{d.value}</div>
-                    <div className="text-[#9CA3AF] text-sm font-[Barlow]">{d.desc}</div>
-                    {isBlockedSaratoga && (
-                      <div className="text-[#F59E0B] text-xs font-[Barlow] mt-1 font-semibold">Top 20 matches only</div>
-                    )}
-                  </div>
-                  {discipline === d.value && <CheckCircle size={20} className="shrink-0" style={{ color: 'var(--toc-theme-accent)' }} />}
-                </GlassCard>
-              );
-            })}
+            {DISCIPLINES.map((d) => (
+              <GlassCard
+                key={d.value}
+                hover
+                onClick={() => setDiscipline(d.value)}
+                className="p-5 flex items-center gap-4"
+                glow={discipline === d.value}
+              >
+                <span className="text-4xl">{d.emoji}</span>
+                <div className="flex-1">
+                  <div className="font-[Bebas_Neue] text-2xl text-[#E8E2D6]">{d.value}</div>
+                  <div className="text-[#9CA3AF] text-sm font-[Barlow]">{d.desc}</div>
+                </div>
+                {discipline === d.value && <CheckCircle size={20} className="shrink-0" style={{ color: 'var(--toc-theme-accent)' }} />}
+              </GlassCard>
+            ))}
             <div className="pt-4">
               <Button variant="primary" fullWidth size="lg" disabled={!discipline} onClick={() => setStep(2)}>
                 Next <ChevronRight size={18} />

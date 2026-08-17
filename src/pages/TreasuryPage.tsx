@@ -7,14 +7,37 @@ import { GlassCard } from '../components/GlassCard';
 import { Badge } from '../components/Badge';
 import { formatDate } from '../utils/time';
 import { fetchTreasurySnapshot, formatCents, ledgerSignFor } from '../lib/treasury';
+import { useAuthStore } from '../stores/authStore';
 
 export default function TreasuryPage() {
   const navigate = useNavigate();
+  const { profile } = useAuthStore();
+  const isAdmin = !!profile && ['admin', 'super_admin'].includes(profile.role);
 
   const { data, isLoading } = useQuery({
     queryKey: ['treasury'],
     queryFn: () => fetchTreasurySnapshot(),
+    enabled: isAdmin,
   });
+
+  if (!profile) return null;
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen px-4 pt-4 pb-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1 text-[#9CA3AF] p-2 -ml-2 mb-4"
+        >
+          <ChevronLeft size={18} /> Back
+        </button>
+        <GlassCard className="p-8 text-center">
+          <div className="font-[Bebas_Neue] text-3xl text-[#E8E2D6]">
+            Treasury is admin only
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
 
   const summary = data?.summary;
   const entries = data?.entries ?? [];

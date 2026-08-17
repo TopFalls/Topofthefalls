@@ -34,25 +34,20 @@ test('TOF has no #1 down-obligation — #1 cannot challenge anyone', () => {
   }
 });
 
-test('top 11 may only challenge one spot up', () => {
-  assert.equal(canChallenge(2, 1), true);
+test('the Top 10 move one spot while #11 can reach #9 and #10', () => {
+  assert.equal(canChallenge(10, 9), true);
+  assert.equal(canChallenge(10, 8), false);
+  assert.equal(challengeEligibility(10, 8).reason, 'Top 10: one spot up only');
+
   assert.equal(canChallenge(11, 10), true);
-  assert.equal(canChallenge(11, 9), false);
-  assert.equal(canChallenge(4, 2), false);
-  assert.equal(challengeEligibility(4, 2).reason, 'Top 11: one spot up only');
+  assert.equal(canChallenge(11, 9), true);
+  assert.equal(canChallenge(11, 8), false);
 });
 
-test('#12 may challenge #11 or #10 only', () => {
+test('#12 and below may challenge up to two spots up', () => {
   assert.equal(canChallenge(12, 11), true);
   assert.equal(canChallenge(12, 10), true);
   assert.equal(canChallenge(12, 9), false);
-  assert.equal(challengeEligibility(12, 9).reason, 'From #12: only #10 or #11');
-});
-
-test('13 and below may challenge up to two spots up', () => {
-  assert.equal(canChallenge(13, 12), true);
-  assert.equal(canChallenge(13, 11), true);
-  assert.equal(canChallenge(13, 10), false);
   assert.equal(canChallenge(20, 18), true);
   assert.equal(canChallenge(20, 17), false);
   assert.equal(challengeEligibility(20, 17).reason, 'Out of range — two spots up max');
@@ -61,7 +56,7 @@ test('13 and below may challenge up to two spots up', () => {
 // ─── Inactive players ────────────────────────────────────────────────────────
 // Inactive players keep their spot on the list but the challenge rules step
 // over them, so the player below can reach the player above. Without this the
-// top-11 "one spot up only" rule would leave whoever sits directly under an
+// Top-10 "one spot up only" rule would leave whoever sits directly under an
 // inactive player with no legal challenge at all.
 
 test('active rank skips inactive positions', () => {
@@ -100,22 +95,22 @@ test('an inactive player cannot challenge anyone', () => {
   assert.equal(challengeEligibilityOnLadder(7, 6, ranks).reason, "You're inactive");
 });
 
-test('the tier boundaries follow active rank, not list position', () => {
-  // Positions 1-13 with #2 inactive: raw #13 is the 12th active player, so the
-  // "#12 may reach #10 or #11" tier applies to it.
-  const ranks = ladder(13, [2]);
-  assert.equal(ranks.get(13), 12);
-  assert.equal(canChallengeOnLadder(13, 12, ranks), true);  // active 12 -> 11
-  assert.equal(canChallengeOnLadder(13, 11, ranks), true);  // active 12 -> 10
-  assert.equal(canChallengeOnLadder(13, 10, ranks), false); // active 12 -> 9
+test('the Top 10 boundary follows active rank, not list position', () => {
+  // Positions 1-12 with #2 inactive: raw #12 is the 11th active player, so it
+  // may reach active ranks #10 and #9 under the two-spot rule.
+  const ranks = ladder(12, [2]);
+  assert.equal(ranks.get(12), 11);
+  assert.equal(canChallengeOnLadder(12, 11, ranks), true);  // active 11 -> 10
+  assert.equal(canChallengeOnLadder(12, 10, ranks), true);  // active 11 -> 9
+  assert.equal(canChallengeOnLadder(12, 9, ranks), false);  // active 11 -> 8
 });
 
 test('an all-active ladder behaves exactly as before', () => {
   const ranks = ladder(20);
-  for (const [my, their] of [[2, 1], [11, 10], [12, 10], [13, 11], [20, 18]]) {
+  for (const [my, their] of [[2, 1], [10, 9], [11, 9], [12, 10], [20, 18]]) {
     assert.equal(canChallengeOnLadder(my, their, ranks), canChallenge(my, their));
   }
-  for (const [my, their] of [[4, 2], [12, 9], [20, 17], [3, 7]]) {
+  for (const [my, their] of [[4, 2], [10, 8], [11, 8], [12, 9], [20, 17], [3, 7]]) {
     assert.equal(canChallengeOnLadder(my, their, ranks), canChallenge(my, their));
   }
 });

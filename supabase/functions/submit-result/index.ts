@@ -298,6 +298,18 @@ async function confirmResult(
     }
   }
 
+  // Rule 5a: successfully defending ends any live post-loss wait, so the
+  // higher-seeded winner may challenge up again immediately.
+  if (!winnerMovedUp) {
+    const { error: defendedCooldownError } = await supabase
+      .from('cooldowns')
+      .delete()
+      .eq('player_id', winnerId)
+      .eq('type', 'post_match')
+      .gt('expires_at', new Date().toISOString());
+    if (defendedCooldownError) throw defendedCooldownError;
+  }
+
   await applyPostMatchCooldowns(supabase, loserId, winnerId, winnerMovedUp);
 
   // A returning player's wait ends once they have defended their spot, win or

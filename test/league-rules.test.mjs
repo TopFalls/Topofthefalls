@@ -21,6 +21,7 @@ const readMigration = (fragment) => {
 };
 
 const alignment = readMigration('align_rules_with_league_document');
+const ladderSwap = readMigration('ladder_swap_on_win');
 const createChallenge = read('supabase/functions/create-challenge/index.ts');
 const submitResult = read('supabase/functions/submit-result/index.ts');
 const respondToChallenge = read('supabase/functions/respond-to-challenge/index.ts');
@@ -33,14 +34,17 @@ const challengesTab = read('src/components/admin/ChallengesTab.tsx');
 
 // --- Rule 2, 3, 3b: the challenge window ----------------------------------
 
-test('rule 2 — inside the top 11 you may challenge one spot up only', () => {
-  assert.equal(canChallenge(2, 1), true);
+test('rule 2 — the Top 10 move one spot while #11 can reach #9 and #10', () => {
+  assert.equal(canChallenge(10, 9), true);
+  assert.equal(canChallenge(10, 8), false);
   assert.equal(canChallenge(11, 10), true);
-  assert.equal(canChallenge(11, 9), false);
-  assert.equal(canChallenge(5, 3), false);
+  assert.equal(canChallenge(11, 9), true);
+  assert.equal(canChallenge(11, 8), false);
 });
 
-test('rule 3 — from the 12th spot down you may challenge up two spots', () => {
+test('rule 3 — from the 11th spot down you may challenge up two spots', () => {
+  assert.equal(canChallenge(11, 10), true);
+  assert.equal(canChallenge(11, 9), true);
   assert.equal(canChallenge(12, 11), true);
   assert.equal(canChallenge(12, 10), true);
   assert.equal(canChallenge(21, 20), true);
@@ -59,6 +63,18 @@ test('rule 3b — only #11 and #12 can reach #10', () => {
 test('challenges only ever go upward', () => {
   assert.equal(canChallenge(1, 2), false);
   assert.equal(canChallenge(3, 7), false);
+});
+
+test('a challenger win swaps two rows and leaves every middle player untouched', () => {
+  const swapFunction = ladderSwap.slice(0, ladderSwap.indexOf('-- ─── Forfeit reversal'));
+  const rankingUpdates = swapFunction.match(/UPDATE public\.rankings[\s\S]*?;/g) ?? [];
+
+  assert.equal(rankingUpdates.length, 3, 'the swap should update only winner and loser rows');
+  for (const update of rankingUpdates) {
+    assert.match(update, /WHERE player_id = p_(winner|loser)_id;/);
+  }
+  assert.doesNotMatch(swapFunction, /WHERE position BETWEEN/);
+  assert.match(swapFunction, /v_winner_pos <= v_loser_pos THEN\s*RETURN;/);
 });
 
 // --- No rank-1 obligation --------------------------------------------------
@@ -138,9 +154,9 @@ test('rule 3b.II — two challenges per week', () => {
   assert.match(alignment, /challenge_weekly_limit integer NOT NULL DEFAULT 2/);
 });
 
-test('rule 4 — Saratoga stays keyed to the visible top 20', () => {
-  // Not active rank: this is a league eligibility rule, not a challenge window.
-  assert.match(createChallenge, /myPos > 20 \|\| theirPos > 20/);
+test('rule 4 — Saratoga is open to every player', () => {
+  assert.doesNotMatch(createChallenge, /myPos > 20 \|\| theirPos > 20/);
+  assert.doesNotMatch(createChallenge, /Saratoga is only allowed/);
 });
 
 test('rule c.I — race to six minimum, no maximum', () => {

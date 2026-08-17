@@ -18,12 +18,11 @@ export const LEAGUE = {
   inactiveReviewDays: 30,
   inactiveRemovalReviewDays: 90,
   minRace: 6,
-  saratogaTopN: 20,
   disciplines: [
     { value: '8 Ball', emoji: '🎱', desc: 'BCA rules · magic rack allowed' },
     { value: '9 Ball', emoji: '🔵', desc: 'Modified BCA · call the 9 · no magic rack' },
     { value: '10 Ball', emoji: '🟡', desc: 'Pro call-shot rules · magic rack allowed' },
-    { value: 'Saratoga', emoji: '🎯', desc: 'Allowed for Top 20 matches only' },
+    { value: 'Saratoga', emoji: '🎯', desc: 'Open to every player on the list' },
   ],
   // Detailed gameplay rules for each discipline (challenger picks the game).
   gameRules: [
@@ -59,7 +58,7 @@ export const LEAGUE = {
     {
       game: 'Saratoga',
       rules: [
-        'Allowed in the Top 20 only.',
+        'Open to every player on the list.',
       ],
     },
   ],
@@ -67,7 +66,7 @@ export const LEAGUE = {
     'You must be approved to enter the list.',
     'All games are rack-your-own. Players lag for the break; the winner breaks unless both players agree otherwise.',
     'First player to challenge gets the first chance.',
-    'Top 11: you may challenge one spot up. Spots 12 and below: you may challenge up to two spots, but if no open player is in range and the open player is directly in front of you, you must challenge them or stay open to challenges from behind.',
+    'Top 10: you may challenge one spot up. Spots 11 and below: you may challenge up to two spots, but if no open player is in range and the open player is directly in front of you, you must challenge them or stay open to challenges from behind.',
     'Only #11 and #12 may challenge #10.',
     'The challenged player must respond within 48 hours of the callout.',
     'Accepted matches must be played within 10 days. Exceptions must be approved by Top of the Falls.',
@@ -75,7 +74,7 @@ export const LEAGUE = {
     'Two challenges per week — your week starts from your first challenge.',
     'Minimum race to 6, no maximum if both agree. Winner breaks unless both agree to alternate.',
     'Match fee is $5 per player in a properly filled envelope.',
-    'Saratoga is allowed in the Top 20 only.',
+    'Saratoga is open to every player on the list.',
     'Matches are played at Black Eagle Country Club, Silver Spur, or the Lido when possible.',
     'All callouts and results must be posted to the Top of the Falls Facebook page with the player tagged.',
     'If the challenged player declines or cannot play, the challenger gets the spot.',

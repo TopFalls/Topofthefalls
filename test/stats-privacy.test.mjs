@@ -15,6 +15,7 @@ const readMigration = (fragment) => {
 };
 
 const visibility = readMigration('restrict_stats_visibility');
+const treasuryVisibility = readMigration('restrict_treasury_visibility');
 const rankingsPage = read('src/pages/RankingsPage.tsx');
 const playerPage = read('src/pages/PlayerPage.tsx');
 const useRankings = read('src/hooks/useRankings.ts');
@@ -58,6 +59,30 @@ test('the policy helpers cannot be called by anon', () => {
   // SECURITY DEFINER with a pinned search_path, or the helper is an attack path.
   const definers = visibility.match(/SECURITY DEFINER\s+SET search_path = public/g) ?? [];
   assert.equal(definers.length, 2, 'both helpers must pin search_path');
+});
+
+test('treasury access is admin-only at the table and both views', () => {
+  assert.match(
+    treasuryVisibility,
+    /DROP POLICY IF EXISTS "Anyone can view treasury" ON public\.treasury_ledger/,
+  );
+  assert.match(treasuryVisibility, /USING \(public\.is_league_admin\(\)\)/);
+
+  for (const relation of ['treasury_ledger', 'treasury_summary', 'treasury_ledger_effects']) {
+    assert.match(
+      treasuryVisibility,
+      new RegExp(`REVOKE ALL ON public\\.${relation} FROM anon`),
+      `${relation} must be closed to the anon key`,
+    );
+  }
+
+  for (const view of ['treasury_summary', 'treasury_ledger_effects']) {
+    assert.match(
+      treasuryVisibility,
+      new RegExp(`ALTER VIEW public\\.${view} SET \\(security_invoker = true\\)`),
+      `${view} must honor the caller's RLS policy`,
+    );
+  }
 });
 
 // --- Stats privacy (UI) ----------------------------------------------------
@@ -117,6 +142,4 @@ test('the server applies the same skip as the client', () => {
   // A UI that offers a challenge the API then rejects is worse than no skip.
   assert.match(createChallenge, /canChallenge\(myRank, theirRank, challengeRange\)/);
   assert.match(createChallenge, /activeIds\.has\(row\.player_id\)/);
-  // Saratoga stays keyed to the visible Top 20, not active rank.
-  assert.match(createChallenge, /myPos > 20 \|\| theirPos > 20/);
 });

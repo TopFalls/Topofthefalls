@@ -11,15 +11,10 @@ export type Eligibility = { ok: boolean; reason?: string };
 export function challengeEligibility(myPos: number, theirPos: number): Eligibility {
   if (myPos === theirPos) return { ok: false, reason: 'This is you' };
   if (theirPos > myPos) return { ok: false, reason: 'Ranked below you' };
-  if (myPos <= 11) {
+  if (myPos <= 10) {
     return theirPos === myPos - 1
       ? { ok: true }
-      : { ok: false, reason: 'Top 11: one spot up only' };
-  }
-  if (myPos === 12) {
-    return theirPos === 11 || theirPos === 10
-      ? { ok: true }
-      : { ok: false, reason: 'From #12: only #10 or #11' };
+      : { ok: false, reason: 'Top 10: one spot up only' };
   }
   return myPos - theirPos <= 2
     ? { ok: true }
@@ -35,7 +30,7 @@ export function canChallenge(myPos: number, theirPos: number): boolean {
 // An inactive player keeps their spot on the list (greyed out, unchallengeable)
 // but the challenge rules step straight over them, so the player below can
 // reach the player above. Without this, the strict "one spot up only" rule for
-// the top 11 would leave whoever sits under an inactive player with no legal
+// the top 10 would leave whoever sits under an inactive player with no legal
 // challenge at all until that player came back.
 //
 // The rules above are therefore applied to *active rank* — a player's place

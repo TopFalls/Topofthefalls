@@ -137,7 +137,7 @@ export default function HomePage() {
                   Welcome to {LEAGUE.name}!
                 </div>
                 <div className="text-[#9CA3AF] text-xs font-[Barlow] space-y-1">
-                  <p>You can challenge any player ranked within <span className="text-[#E8E2D6]">1 spot up</span> in the Top 11, or <span className="text-[#E8E2D6]">up to 2 spots up</span> in spots 12+.</p>
+                  <p>You can challenge any player ranked within <span className="text-[#E8E2D6]">1 spot up</span> in the Top 10, or <span className="text-[#E8E2D6]">up to 2 spots up</span> in spots 11+.</p>
                   <p>Accepted matches must be played within <span className="text-[#E8E2D6]">10 days</span>.</p>
                   <p>All callouts and results must be posted to the <span className="text-[var(--toc-theme-accent-2)] font-semibold">{LEAGUE.name} Facebook page</span> with the player tagged.</p>
                 </div>

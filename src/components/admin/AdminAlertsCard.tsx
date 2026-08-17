@@ -18,6 +18,7 @@ type AdminAlert = {
   alert_type: string;
   headline: string;
   detail: string | null;
+  player_id: string | null;
   created_at: string;
 };
 
@@ -25,6 +26,7 @@ const ALERT_ICON: Record<string, string> = {
   inactive_drift: '⬇️',
   inactive_90_day: '⏳',
   wash_requested: '🤝',
+  wash_penalty: '⏱️',
   player_self_deactivated: '💤',
   player_self_activated: '🎱',
 };
@@ -35,7 +37,7 @@ export function useOpenAdminAlerts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_alerts')
-        .select('id, alert_type, headline, detail, created_at')
+        .select('id, alert_type, headline, detail, player_id, created_at')
         .is('acknowledged_at', null)
         .order('created_at', { ascending: false })
         .limit(30);
@@ -54,6 +56,8 @@ export function useOpenAdminAlerts() {
 export function AdminAlertsCard() {
   const qc = useQueryClient();
   const { data: alerts = [] } = useOpenAdminAlerts();
+  const [overrideBusy, setOverrideBusy] = React.useState<string | null>(null);
+  const [overrideError, setOverrideError] = React.useState('');
 
   async function dismiss(id: string) {
     await supabase
@@ -61,6 +65,30 @@ export function AdminAlertsCard() {
       .update({ acknowledged_at: new Date().toISOString() })
       .eq('id', id);
     qc.invalidateQueries({ queryKey: ['admin-alerts'] });
+  }
+
+  async function overrideWash(alert: AdminAlert, remainingHours: number | null) {
+    if (!alert.player_id) return;
+    setOverrideBusy(alert.id);
+    setOverrideError('');
+
+    const { error } = await supabase.rpc('admin_override_wash_cooldown', {
+      p_player_id: alert.player_id,
+      p_remaining_hours: remainingHours,
+    });
+
+    setOverrideBusy(null);
+    if (error) {
+      setOverrideError(
+        error.code === 'PGRST202' || error.code === '42883'
+          ? 'Wash overrides are not available on this database yet.'
+          : error.message,
+      );
+      return;
+    }
+
+    qc.invalidateQueries({ queryKey: ['admin-alerts'] });
+    qc.invalidateQueries({ queryKey: ['cooldowns'] });
   }
 
   if (alerts.length === 0) return null;
@@ -71,6 +99,10 @@ export function AdminAlertsCard() {
         Needs your attention{' '}
         <span style={{ color: 'var(--toc-theme-accent)' }}>({alerts.length})</span>
       </h3>
+
+      {overrideError && (
+        <div className="mt-3 text-xs text-[#EF4444] font-[Barlow]">{overrideError}</div>
+      )}
 
       <div className="space-y-2 mt-3">
         {alerts.map((alert) => (
@@ -86,6 +118,24 @@ export function AdminAlertsCard() {
               <div className="text-[10px] text-[#6B7280] font-[Barlow] mt-1">
                 {formatDateTime(alert.created_at)}
               </div>
+              {alert.alert_type === 'wash_penalty' && alert.player_id && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <button
+                    onClick={() => overrideWash(alert, 1)}
+                    disabled={overrideBusy === alert.id}
+                    className="px-2 py-1 rounded-lg text-[10px] font-[Barlow] font-medium bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/30 disabled:opacity-50"
+                  >
+                    Shorten to 1 hour
+                  </button>
+                  <button
+                    onClick={() => overrideWash(alert, null)}
+                    disabled={overrideBusy === alert.id}
+                    className="px-2 py-1 rounded-lg text-[10px] font-[Barlow] font-medium bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/30 disabled:opacity-50"
+                  >
+                    Clear cooldown
+                  </button>
+                </div>
+              )}
             </div>
             <button
               onClick={() => dismiss(alert.id)}

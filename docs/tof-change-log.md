@@ -19,6 +19,68 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-14 — Eight rule and privacy changes from Carl's questionnaire
+
+**Carl asked:** his answers to the 47-question league setup questionnaire
+(`docs/carl-questionnaire.html`).
+
+**Shipped, all live:**
+
+1. **The treasury is admin-only.** This was his biggest complaint — *"Players can
+   see league stats especially the treasury"* — and it was worse than he knew:
+   `treasury_ledger` carried a `USING (true)` policy and both reporting views had
+   no RLS at all, every one of them readable by `anon`. Anyone with the public
+   key, signed in or not, could read the whole ledger. Now gated on
+   `is_league_admin()`, `anon` revoked on all three, both views
+   `security_invoker`. Verified: all three return `42501` to the public key.
+2. **A win swaps two players instead of shifting a block.** Carl: *"Challenger
+   takes spot, the loser goes to the challenger's spot."* Everyone between them
+   now keeps their position. A defending winner still moves nobody.
+3. **An ignored challenge counts as a forfeit.** Expiry previously only set
+   `status = 'expired'` — no loss, no ranking move, no stats. It now runs through
+   the same reversible path a decline uses.
+4. **Saratoga is open to every player** — the Top 20 restriction is gone, server
+   and client.
+5. **The one-spot-at-a-time band is the Top 10, not the Top 11**, keyed off the
+   challenger's active rank. The rule already existed at the wrong width in two
+   places; both were corrected, and a now-redundant special case for #12 removed.
+6. **Defending clears the post-loss wait.** Carl: *"If you are challenged and
+   defend you may challenge up."*
+7. **A wash keeps its 24-hour default but an admin can override it** — clear it
+   or shorten it, audit-logged.
+8. **Mike Birkoski is an admin** (`disturbingiraq@gmail.com`). He had already
+   signed in and claimed his roster row. **This moves canon** — `CLAUDE.md`
+   previously said Carl was the sole admin. He remains the sole *super_admin*.
+
+**Not built, pending Carl.** The open-player / "not protected" mechanic from B5,
+L4 and L5 rests on something he never states: that being in a challenge normally
+shields you from incoming challenges. Two questions are with him. Live scoring
+and guest access are specified and queued for the next run.
+
+**How it was built.** Claude planned and reviewed; a Codex worker wrote the
+implementation, under `.claude/route/runs/20260814-163138-carl-rules-privacy/`.
+The first pass failed review on three stale tests — it changed the rules but left
+two test files still pinning Top 11 and the Saratoga gate — and was sent back;
+`REVIEW-1.md` records the defects. Its own report claimed a green suite from a
+sandbox where it had patched `git ls-files`, so the numbers below are from an
+independent run.
+
+**Files:** 5 new migrations, `create-challenge`, `submit-result`, `ladder.ts`,
+`league.ts`, `TreasuryPage`, `ChallengePage`, `HomePage`, `AdminAlertsCard`,
+3 test files, `CLAUDE.md`
+**Gates:** build ✓ · tests 98/98 ✓
+**Deploy:** 5 migrations applied · `create-challenge` v3→v4 ·
+`submit-result` v4→v5, both smoke-tested · frontend via `npx vercel --prod`
+
+**Flags:**
+- The ladder swap changes live mechanics, but no match has been played on this
+  instance yet, so no ranking has moved under the old rule.
+- `expire_stale_challenges` passes a NULL actor to the forfeit function. Checked
+  before applying: the apply function accepts null (an expiry has no human
+  actor); only the reverse function requires a real admin.
+
+---
+
 ## 2026-08-12 — Confirmed: Carl can add players again
 
 **Verified in the database, not just reported.** Carl added two real players
