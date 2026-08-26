@@ -102,10 +102,16 @@ serve(async (req) => {
     }
 
     const activeIds = new Set((activeRes.data ?? []).map((p: { id: string }) => p.id));
+    // Every active player's rank, not just the two in this challenge - the
+    // open-player rule below has to ask "was anyone else available?".
+    const activeRankByPlayer = new Map<string, number>();
     let myPos = 0, theirPos = 0, myRank = 0, theirRank = 0, activeRank = 0;
     for (const row of ladderRes.data as { player_id: string; position: number }[]) {
       const isActive = activeIds.has(row.player_id);
-      if (isActive) activeRank += 1;
+      if (isActive) {
+        activeRank += 1;
+        activeRankByPlayer.set(row.player_id, activeRank);
+      }
       if (row.player_id === challenger.id) {
         myPos = row.position;
         if (isActive) myRank = activeRank;
@@ -127,11 +133,12 @@ serve(async (req) => {
     const { count: weeklyCount } = await supabase.from('challenges').select('id', { count: 'exact', head: true }).eq('challenger_id', challenger.id).gte('created_at', sevenDaysAgo);
     if ((weeklyCount ?? 0) >= weeklyLimit) return new Response(JSON.stringify({ error: `You have reached the weekly challenge limit (${weeklyLimit} per 7 days).` }), { status: 429, headers: corsHeaders });
 
-    const { data: existingOut } = await supabase.from('challenges').select('id').eq('challenger_id', challenger.id).in('status', ['pending', 'accepted', 'scheduled', 'in_progress']).maybeSingle();
+    // limit(1): a bare maybeSingle() errors when more than one row matches and
+    // hands back data:null, which reads as "no outgoing challenge" and would
+    // let a player who somehow holds two stack up more.
+    const { data: existingOut, error: existingOutError } = await supabase.from('challenges').select('id').eq('challenger_id', challenger.id).in('status', ['pending', 'accepted', 'scheduled', 'in_progress']).limit(1).maybeSingle();
+    if (existingOutError) return new Response(JSON.stringify({ error: 'Could not check your existing challenges. Please try again.' }), { status: 503, headers: corsHeaders });
     if (existingOut) return new Response(JSON.stringify({ error: 'You already have an active outgoing challenge.' }), { status: 409, headers: corsHeaders });
-
-    const { data: existingIn } = await supabase.from('challenges').select('id').eq('challenged_id', challenged_player_id).in('status', ['pending', 'accepted', 'scheduled', 'in_progress']).maybeSingle();
-    if (existingIn) return new Response(JSON.stringify({ error: 'That player already has an active challenge they must resolve first.' }), { status: 409, headers: corsHeaders });
 
     // Every cooldown blocks issuing a challenge and none of them block
     // accepting one — that is what the rules mean by "defend or wait".
@@ -157,8 +164,113 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: message }), { status: 429, headers: corsHeaders });
     }
 
+    // -- Who may be challenged (questionnaire B5, L4, L5) --------------------
+    //
+    // Carl's answers, joined up: a player can be challenged by more than one
+    // person at once ("Many"), and you may always challenge somebody already
+    // tied up in a match - but if an OPEN player was sitting there in your
+    // range and you skipped them to chase a match result instead, you give up
+    // your own protection and anyone below you may challenge you while you
+    // wait.
+    //
+    // This changes live play and it is read off three free-text answers rather
+    // than a rule Carl stated outright, so it sits behind a switch:
+    // league_settings.open_player_rule, which ships ON because that is what he
+    // asked for. Turn it off and the original rule comes straight back - one
+    // incoming challenge at a time, everybody in a challenge protected - with
+    // no deploy:
+    //
+    //   UPDATE league_settings SET open_player_rule = false;
+    //
+    // If the column is missing entirely the select fails and the rule stays
+    // off, which is the safe direction to fail in.
+    const ACTIVE_CHALLENGE = ['pending', 'accepted', 'scheduled', 'in_progress'];
+
+    const { data: ruleRow } = await supabase.from('league_settings').select('open_player_rule').limit(1).maybeSingle();
+    const openPlayerRule = ruleRow?.open_player_rule === true;
+
+    let challengerKeepsProtection = true;
+
+    if (!openPlayerRule) {
+      // limit(1), not a bare maybeSingle(): if this rule is switched off while
+      // several incoming challenges are already live, maybeSingle() errors on
+      // the extra rows and returns data:null, which would read as "nobody is
+      // challenging them" and wave the new challenge through.
+      const { data: existingIn, error: existingInError } = await supabase.from('challenges').select('id').eq('challenged_id', challenged_player_id).in('status', ACTIVE_CHALLENGE).limit(1).maybeSingle();
+      if (existingInError) return new Response(JSON.stringify({ error: 'Could not check that player. Please try again.' }), { status: 503, headers: corsHeaders });
+      if (existingIn) return new Response(JSON.stringify({ error: 'That player already has an active challenge they must resolve first.' }), { status: 409, headers: corsHeaders });
+    } else {
+      // "Engaged" comes from engaged_player_ids() in the database, not from a
+      // second copy of the status lists here. Two copies is precisely how this
+      // repo has drifted before, and the migration that defines that function
+      // promises it is the single definition — so use it.
+      const [engagedRes, liveChallengesRes] = await Promise.all([
+        supabase.rpc('engaged_player_ids'),
+        supabase.from('challenges').select('challenger_id, challenger_protected, expires_at, match_deadline').in('status', ACTIVE_CHALLENGE),
+      ]);
+
+      // Fail CLOSED. Every guard below is a "nobody is in the way" test, so a
+      // failed read would otherwise read as a clear board and hand out
+      // protection that was never earned.
+      if (engagedRes.error || liveChallengesRes.error) {
+        console.error('[create-challenge open-player]', engagedRes.error ?? liveChallengesRes.error);
+        return new Response(JSON.stringify({ error: 'Could not work out who is free to be challenged right now. Please try again.' }), { status: 503, headers: corsHeaders });
+      }
+
+      const engaged = new Set(
+        ((engagedRes.data ?? []) as { player_id: string }[]).map((r) => r.player_id),
+      );
+
+      const liveChallenges = (liveChallengesRes.data ?? []) as {
+        challenger_id: string; challenger_protected: boolean | null;
+        expires_at: string | null; match_deadline: string | null;
+      }[];
+
+      // Protection belongs to the player who ISSUED a challenge and did not
+      // skip anyone to do it. The player they challenged stays challengeable -
+      // that is what lets somebody go after the winner or the loser of a match
+      // that is already arranged.
+      //
+      // It also has to run out. Only 'pending' challenges are ever expired, so
+      // a challenge that was accepted and then never played would otherwise
+      // protect its challenger forever and freeze everyone below them. Once
+      // the 10-day deadline to actually play has passed, the shield is gone.
+      const nowMs = Date.now();
+      const stillInTime = (c: { expires_at: string | null; match_deadline: string | null }) => {
+        const until = c.match_deadline ?? c.expires_at;
+        return until === null || Date.parse(until) > nowMs;
+      };
+      const protectedPlayers = new Set(
+        liveChallenges
+          .filter((c) => c.challenger_protected !== false && stillInTime(c))
+          .map((c) => c.challenger_id),
+      );
+      if (protectedPlayers.has(challenged_player_id)) {
+        return new Response(JSON.stringify({ error: 'That player has a challenge of their own running, and they took the open player when they made it. They are protected until it is played.' }), { status: 409, headers: corsHeaders });
+      }
+
+      // An "open player" is active, inside my range, and not already tied up.
+      // A cooldown does NOT take somebody out of this pool: cooldowns stop you
+      // ISSUING a challenge, never accepting one, so a player sitting one out
+      // still has to defend and is still a target you could have taken.
+      let openPlayerAvailable = false;
+      for (const [pid, rank] of activeRankByPlayer) {
+        if (pid === challenger.id) continue;
+        if (canChallenge(myRank, rank, challengeRange)) continue; // truthy = a reason it is NOT allowed
+        if (engaged.has(pid)) continue;
+        openPlayerAvailable = true;
+        break;
+      }
+
+      challengerKeepsProtection = !(engaged.has(challenged_player_id) && openPlayerAvailable);
+    }
+
     const expiresAt = new Date(Date.now() + responseHours * 3600 * 1000).toISOString();
-    const { data: challenge, error: insertErr } = await supabase.from('challenges').insert({ challenger_id: challenger.id, challenged_id: challenged_player_id, discipline, race_length, status: 'pending', expires_at: expiresAt }).select().single();
+    const challengeRow: Record<string, unknown> = { challenger_id: challenger.id, challenged_id: challenged_player_id, discipline, race_length, status: 'pending', expires_at: expiresAt };
+    // Only written while the rule is live, so this function keeps working on a
+    // database that has not had the column added yet.
+    if (openPlayerRule) challengeRow.challenger_protected = challengerKeepsProtection;
+    const { data: challenge, error: insertErr } = await supabase.from('challenges').insert(challengeRow).select().single();
     if (insertErr) throw insertErr;
 
     const { data: challengerStats } = await supabase.from('player_season_stats').select('challenges_issued').eq('player_id', challenger.id).single();
@@ -198,7 +310,7 @@ serve(async (req) => {
       actor_player_id: challenger.id,
     });
 
-    return new Response(JSON.stringify({ challenge_id: challenge.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ challenge_id: challenge.id, challenger_protected: challengerKeepsProtection }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     console.error('create-challenge failed', e);
     return new Response(JSON.stringify({ error: 'Something went wrong. Please try again.' }), { status: 500, headers: corsHeaders });

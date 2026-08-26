@@ -26,6 +26,13 @@ const TYPE_ICONS: Record<string, string> = {
   result_confirmed:   '🏆',
   result_disputed:    '⚠️',
   rank_changed:       '📈',
+  // Added with the questionnaire batch: Carl's league-wide message (H2),
+  // the morning-of nudge (H1), and the inactivity warning he ticked.
+  league_announcement: '📣',
+  match_day_reminder:  '📅',
+  inactivity_warning:  '⏳',
+  challenge_forfeited: '⚖️',
+  challenge_washed:    '🤝',
 };
 
 const VENUES = LEAGUE.sponsorBars;

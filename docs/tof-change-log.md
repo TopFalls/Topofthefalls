@@ -19,6 +19,101 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-25 — The rest of the questionnaire, and what a review of it caught
+
+**Carl asked:** the remaining answers from the league questionnaire — K3, H1, H2,
+L3, and the open-player rule he described across B5, L4 and L5.
+
+**Shipped, all live:**
+
+1. **An admin can record a match for players who don't use the app.** Carl:
+   *"Leave them on the list I will enter there results myself."* New **Record**
+   tab in the admin screen. It runs the same server code a normal two-player
+   confirmation runs, so the list moves and both records update exactly as if
+   the players had entered it themselves.
+2. **Carl can message the whole league.** New **Announce** tab. Every player
+   with an account gets a notification and it lands in the league feed. Players
+   who haven't claimed their name have no account to receive it, and the screen
+   says so.
+3. **Match-day reminders.** Both players get a notification the morning of a
+   scheduled match. Runs 9am Mountain.
+4. **Challenge expiry now runs on a clock.** It only ever fired as a side effect
+   of somebody *creating* a challenge, so on a quiet week nothing expired and
+   the forfeit rule from 2026-08-14 never fired at all. Hourly now.
+5. **A new player lands on their own record** after claiming, not the league
+   home. Carl, asked what they should see first: *"Their own record."*
+6. **The open-player rule.** Carl's B5/L4/L5 answers joined up: several people
+   may challenge the same player; you may always challenge somebody already in
+   a match; but if an *open* player was sitting in your range and you skipped
+   them, you lose your own protection and anyone below may challenge you while
+   you wait. **This ships ON.** It is an interpretation of three free-text
+   answers, so it has a switch — `UPDATE league_settings SET open_player_rule =
+   false;` restores one-challenge-at-a-time with no deploy.
+
+**The ladder swap was tested for the first time.** `cascade_ranking_after_win`
+was rewritten on 2026-08-14 and had never once executed. Two throwaway players
+were created at #120/#121 inside a transaction that then rolled itself back:
+challenger-from-below wins → the two swap and `previous_position` is right on
+both; defender wins → nobody moves; the real 119-player ladder byte-identical
+before and after. Nothing persisted, no migration ledger row.
+
+**A review of this batch found fourteen defects and all fourteen are fixed.**
+Five reviewers were run against the diff; a session limit killed three of them
+and every verifier, so the two that finished were triaged by hand rather than
+trusted. The one that mattered:
+
+> **Admin-entered results would have been silently overturned an hour later.**
+> If two players arranged a match in the app and then played it offline, Carl
+> recording the result wrote a *second* challenge and left the original open.
+> The new hourly expiry cron would then forfeit that original — moving the
+> ladder a second time, crediting a forfeit win to the player who actually
+> lost. Fixed: the server now finds the live challenge and finishes *that* one,
+> taking its record of who challenged whom over whatever the form said.
+
+Also fixed from that review: the open-player queries swallowed their errors and
+failed *open*, so a transient database blip read as "the board is clear" and
+handed out protection nobody earned — it fails closed now. Protection never
+expired, because only `pending` challenges are ever swept, so an accepted
+match nobody played would have frozen everyone below that player forever.
+Players on a cooldown were wrongly treated as unavailable, when a cooldown only
+stops you *issuing* a challenge and never stops you defending. A washed
+challenge left its match row alive for good, marking both players permanently
+busy. `engaged_player_ids()` was defined in SQL and then quietly re-implemented
+in TypeScript — the exact drift this repo keeps getting bitten by. Plus
+duplicate-entry protection, an `is_active` check, validation against the
+league's own settings instead of an opaque 500, and the challenge counters the
+admin stats page reads.
+
+**Two things worth knowing about the state of the league.** As of this entry
+the database holds **zero challenges and zero matches**, and **two claimed
+accounts** — Carl and Mike. Whatever has been announced, no player has yet
+signed in and used it. So none of the above disturbed anything in flight, and
+the golden path still has not been walked by a real player.
+
+**Files:** 4 new migrations, `create-challenge`, `submit-result`,
+`AnnouncementsTab`, `RecordMatchTab`, `AdminPage`, `Layout`,
+`NotificationsPage`, `database.ts`, 1 new test file
+**Gates:** build ✓ · tests 139/139 ✓ (110 before, 29 new)
+**Deploy:** 4 migrations applied · `create-challenge` and `submit-result`
+redeployed via the Supabase CLI, both smoke-tested · frontend via
+`npx vercel --prod --yes --scope tof2`
+
+**Flags:**
+- The open-player rule is ON and changes live play. The switch above is the
+  revert; it needs no deploy and takes effect on the next challenge.
+- A challenge that is accepted and then never played still blocks its
+  challenger from issuing another one, forever — nothing sweeps `accepted` or
+  `scheduled`. Protection now expires at the 10-day deadline, but the
+  challenger stays stuck. Carl can clear it with the wash tool. Worth a proper
+  rule at some point; inventing one here would have been guesswork.
+- The challenge screen does not yet know who is protected, so a player can tap
+  Challenge and get a refusal. The message explains why. Fixing it properly
+  needs protection published to the client, which is a wider change.
+- `cooldowns.type` in the TypeScript types listed a value nothing writes and
+  omitted two the app uses daily. Corrected in passing.
+
+---
+
 ## 2026-08-17 — Live scores for the whole league, and a way in for guests
 
 **Carl asked:** *"matches that are using the score board to be displayed live

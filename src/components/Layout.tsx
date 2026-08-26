@@ -105,7 +105,16 @@ export const Layout: React.FC = () => {
       return;
     }
     if (!player && path !== '/claim') { navigate('/claim', { replace: true }); return; }
-    if (player && path === '/claim') { navigate('/', { replace: true }); return; }
+    if (player && path === '/claim') {
+      // Carl, asked what a new player should see first: "Their own record."
+      // ClaimPage sets this flag the moment a name is claimed, so the very
+      // first screen after claiming is their own profile rather than the
+      // league home. Decided here, at the one place that owns redirects, so it
+      // cannot race the guard below.
+      const justClaimed = localStorage.getItem('toc-new-user') === '1';
+      navigate(justClaimed ? `/player/${player.id}` : '/', { replace: true });
+      return;
+    }
   }, [session, player, isLoading, location.pathname, navigate, demoMode]);
 
   // Realtime subscriptions

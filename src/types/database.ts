@@ -73,6 +73,7 @@ export interface Database {
           wash_reason: string | null;
           created_at: string;
           updated_at: string;
+          challenger_protected: boolean;
         };
         Insert: Omit<Database['public']['Tables']['challenges']['Row'], 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['challenges']['Insert']>;
@@ -145,7 +146,11 @@ export interface Database {
         Row: {
           id: string;
           player_id: string;
-          type: 'post_match' | 'post_decline';
+          // 'post_decline' is dead — nothing has written it since the forfeit
+          // rules landed. What the app actually writes: 'post_match' after a
+          // result, 'reentry' when a player comes back from inactive, and
+          // 'wash' when a challenge is called off for scheduling.
+          type: 'post_match' | 'reentry' | 'wash';
           expires_at: string;
           created_at: string;
         };
@@ -319,6 +324,7 @@ export interface Database {
           challenge_weekly_limit: number;
           first_challenge_range: number;
           updated_at: string;
+          open_player_rule: boolean;
         };
         Insert: Omit<Database['public']['Tables']['league_settings']['Row'], 'id' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['league_settings']['Insert']>;

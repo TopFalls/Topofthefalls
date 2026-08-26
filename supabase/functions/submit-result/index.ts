@@ -354,6 +354,231 @@ async function confirmResult(
   if (activityError) throw activityError;
 }
 
+
+// -- Admin-entered results (questionnaire K3) --------------------------------
+//
+// Carl: "Leave them on the list I will enter there results myself." Some of the
+// 119 players have no email or will not use an app, but they still play and
+// still move on the list. This lets an admin record a finished match for them.
+//
+// It reuses confirmResult, the same path a normal two-player confirmation
+// takes, so the ladder swap, stats, streaks, cooldowns, feed and notifications
+// all behave identically. A second copy of those rules is exactly how the two
+// halves of this app drift apart.
+//
+// The important subtlety is that the match may ALREADY exist in the app. If A
+// challenged B in the app and they then played it on a night B could not be
+// bothered to open his phone, there is a live challenge sitting there. Writing
+// a fresh one and leaving the original open would let the hourly expiry cron
+// forfeit it an hour later and move the ladder a second time, quietly
+// overturning the result Carl just typed in. So: find the live challenge
+// first, and finish THAT one.
+//
+// Match fees are NOT recorded here. A player who does not use the app pays Carl
+// in person, and inventing a payment method would put a false line in the
+// treasury.
+async function handleAdminEntry(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const json = (payload: unknown, status = 200) =>
+    new Response(JSON.stringify(payload), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+  const bad = (message: string, status = 400) => json({ error: message }, status);
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single();
+  if (!profile || !['admin', 'super_admin'].includes(profile.role as string)) {
+    return bad('Only a league admin can enter a result for other players.', 403);
+  }
+
+  let challengerId = body.challenger_id as string;
+  let challengedId = body.challenged_id as string;
+  let discipline = body.discipline as string;
+  let raceLength = Number(body.race_length);
+  let venue = body.venue as string;
+  const winnerId = body.winner_id as string;
+  const p1Score = Number(body.final_score_player1);
+  const p2Score = Number(body.final_score_player2);
+
+  if (!challengerId || !challengedId) return bad('Pick both players.');
+  if (challengerId === challengedId) return bad('A player cannot play themselves.');
+  if (!discipline) return bad('Pick a game.');
+  if (!venue) return bad('Pick where it was played.');
+  if (!Number.isInteger(raceLength) || raceLength < 1) return bad('Race length must be a whole number.');
+  if (winnerId !== challengerId && winnerId !== challengedId) return bad('The winner must be one of the two players.');
+
+  // The database CHECK lists reject anything off-menu, and that error would
+  // surface to Carl as an opaque 500. Check against the league's own settings
+  // first, the way create-challenge does.
+  const { data: settings } = await supabase
+    .from('league_settings')
+    .select('min_race, max_race, disciplines, venues')
+    .limit(1)
+    .maybeSingle();
+  const disciplines: string[] = settings?.disciplines ?? ['8 Ball', '9 Ball', '10 Ball', 'Saratoga'];
+  const venues: string[] = settings?.venues ?? ['Silver Spur', 'Lido', 'Black Eagle Country Club'];
+  const minRace: number = settings?.min_race ?? 6;
+  const maxRace: number | null = settings?.max_race ?? null;
+  if (!disciplines.includes(discipline)) return bad(`${discipline} is not one of the league's games.`);
+  if (!venues.includes(venue)) return bad(`${venue} is not one of the league's venues.`);
+  if (raceLength < minRace) return bad(`A race is at least ${minRace} in this league.`);
+  if (maxRace != null && raceLength > maxRace) return bad(`A race is at most ${maxRace} in this league.`);
+
+  // Inactive players are stepped over by the challenge rules and cannot be
+  // challenged at all, so an admin-entered result must not move one up the
+  // list either — that would shift every active player's effective rank.
+  const { data: bothPlayers } = await supabase
+    .from('players').select('id, full_name, is_active').in('id', [challengerId, challengedId]);
+  if (!bothPlayers || bothPlayers.length !== 2) return bad('Both players must be on the list.', 404);
+  const inactive = bothPlayers.filter((pl: { is_active: boolean }) => !pl.is_active);
+  if (inactive.length) {
+    return bad(`${inactive.map((pl: { full_name: string }) => pl.full_name).join(' and ')} is marked inactive. Make them active before recording a match.`, 409);
+  }
+
+  const { data: ladder } = await supabase.from('rankings').select('player_id').in('player_id', [challengerId, challengedId]);
+  if (!ladder || ladder.length !== 2) return bad('Both players must be on the list.', 404);
+
+  // Recording the same game twice would double every counter. confirmResult is
+  // a dozen sequential writes with no transaction around them, so a transient
+  // failure late on returns a generic 500 and invites exactly that retry.
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data: recent } = await supabase
+    .from('matches')
+    .select('id, player1_id, player2_id, player1_score, player2_score')
+    .eq('status', 'confirmed')
+    .gte('completed_at', tenMinutesAgo)
+    .in('player1_id', [challengerId, challengedId])
+    .in('player2_id', [challengerId, challengedId]);
+  const duplicate = (recent ?? []).find((m: Record<string, number | string>) =>
+    Math.max(Number(m.player1_score), Number(m.player2_score)) === Math.max(p1Score, p2Score) &&
+    Math.min(Number(m.player1_score), Number(m.player2_score)) === Math.min(p1Score, p2Score));
+  if (duplicate) {
+    return bad('That looks like the same match again — it was recorded in the last few minutes. Check the Matches tab before entering it a second time.', 409);
+  }
+
+  // Is this game already on the board? If so, finish the row that exists
+  // rather than writing a rival one and leaving the original to be forfeited
+  // by the expiry job.
+  const { data: liveChallenges } = await supabase
+    .from('challenges')
+    .select('id, challenger_id, challenged_id, discipline, race_length, venue')
+    .in('status', ['pending', 'accepted', 'scheduled', 'in_progress'])
+    .in('challenger_id', [challengerId, challengedId])
+    .in('challenged_id', [challengerId, challengedId]);
+  const existing = (liveChallenges ?? [])[0] as
+    { id: string; challenger_id: string; challenged_id: string; discipline: string; race_length: number; venue: string | null } | undefined;
+
+  let challengeId: string;
+  let reusedChallenge = false;
+
+  if (existing) {
+    // The live challenge is the authoritative record of who called whom, and
+    // the ladder maths keys off it. Take its orientation over the form's.
+    challengerId = existing.challenger_id;
+    challengedId = existing.challenged_id;
+    discipline = existing.discipline;
+    raceLength = existing.race_length;
+    venue = existing.venue ?? venue;
+    challengeId = existing.id;
+    reusedChallenge = true;
+  } else {
+    const nowIso = new Date().toISOString();
+    const { data: challenge, error: challengeError } = await supabase.from('challenges').insert({
+      challenger_id: challengerId,
+      challenged_id: challengedId,
+      discipline,
+      race_length: raceLength,
+      venue,
+      status: 'accepted',
+      scheduled_at: nowIso,
+      expires_at: nowIso,
+    }).select().single();
+    if (challengeError) throw challengeError;
+    challengeId = challenge.id;
+
+    // create-challenge keeps these counters for every challenge it writes, and
+    // the admin stats page reads them. Without this the players Carl enters by
+    // hand never appear on the challenge leaderboards at all.
+    for (const [pid, column] of [[challengerId, 'challenges_issued'], [challengedId, 'challenges_received']] as [string, string][]) {
+      const { data: seasonRow } = await supabase.from('player_season_stats').select(column).eq('player_id', pid).maybeSingle();
+      if (seasonRow) {
+        await supabase.from('player_season_stats').update({ [column]: (seasonRow as Record<string, number>)[column] + 1 }).eq('player_id', pid);
+      }
+    }
+  }
+
+  // Scores are validated against the orientation we settled on above, not the
+  // one the form guessed, because player1 is always the challenger.
+  const scoreError = validateFinalScore(winnerId, challengerId, challengedId, p1Score, p2Score, raceLength);
+  if (scoreError) return bad(scoreError);
+
+  const nowIso = new Date().toISOString();
+  const { data: priorMatch } = await supabase
+    .from('matches').select('id, status').eq('challenge_id', challengeId).maybeSingle();
+
+  if (priorMatch && ['confirmed', 'resolved'].includes(priorMatch.status as string)) {
+    return bad('That match has already been recorded.', 409);
+  }
+
+  // Every submitted-detail column is filled in, not just the two flags. If this
+  // request dies before confirmResult finishes, a half-written row that one of
+  // the players later submits against would otherwise fail isCompleteSubmission
+  // and land in Carl's dispute queue for a game nobody disputed.
+  const matchFields = {
+    player1_id: challengerId,
+    player2_id: challengedId,
+    discipline,
+    race_length: raceLength,
+    venue,
+    scheduled_at: nowIso,
+    started_at: nowIso,
+    status: 'in_progress',
+    player1_score: p1Score,
+    player2_score: p2Score,
+    player1_submitted: true,
+    player2_submitted: true,
+    player1_submitted_winner_id: winnerId,
+    player2_submitted_winner_id: winnerId,
+    player1_submitted_player1_score: p1Score,
+    player1_submitted_player2_score: p2Score,
+    player2_submitted_player1_score: p1Score,
+    player2_submitted_player2_score: p2Score,
+    player1_submitted_at: nowIso,
+    player2_submitted_at: nowIso,
+  };
+
+  let match: Record<string, unknown>;
+  if (priorMatch) {
+    const { data: updated, error: updateError } = await supabase
+      .from('matches').update(matchFields).eq('id', priorMatch.id).select().single();
+    if (updateError) throw updateError;
+    match = updated;
+  } else {
+    const { data: inserted, error: matchError } = await supabase
+      .from('matches').insert({ challenge_id: challengeId, ...matchFields }).select().single();
+    if (matchError) throw matchError;
+    match = inserted;
+  }
+
+  const loserId = winnerId === challengerId ? challengedId : challengerId;
+  await confirmResult(supabase, match.id as string, winnerId, loserId, p1Score, p2Score, match as never);
+
+  const { error: auditError } = await supabase.from('audit_events').insert({
+    actor_profile_id: userId,
+    action: 'match.admin_recorded',
+    target_type: 'match',
+    target_id: match.id as string,
+    detail: {
+      challenger_id: challengerId, challenged_id: challengedId, winner_id: winnerId,
+      player1_score: p1Score, player2_score: p2Score, discipline, race_length: raceLength, venue,
+      reused_existing_challenge: reusedChallenge,
+    },
+  });
+  if (auditError) throw auditError;
+
+  return json({ success: true, match_id: match.id, reused_existing_challenge: reusedChallenge });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
@@ -361,7 +586,11 @@ serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser(req.headers.get('Authorization')?.replace('Bearer ', ''));
     if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: cors });
 
-    const { match_id, winner_id, final_score_player1, final_score_player2, payment_method } = await req.json();
+    const body = await req.json();
+    // An admin recording a result for players who do not use the app.
+    if (body?.admin_entry === true) return await handleAdminEntry(supabase, user.id, body);
+
+    const { match_id, winner_id, final_score_player1, final_score_player2, payment_method } = body;
     const normalizedPayment = normalizePayment(payment_method);
     if (payment_method != null && payment_method !== '' && normalizedPayment === null) return new Response(JSON.stringify({ error: 'Invalid payment method.' }), { status: 400, headers: cors });
 
