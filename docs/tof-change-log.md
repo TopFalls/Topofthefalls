@@ -19,6 +19,50 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-25 — The golden path was walked end to end for the first time
+
+**Not a change — a test.** Claim → challenge → accept → submit → confirm had
+never once been run on this instance by anything other than a person, and no
+person had run it either. It has now been run against the live project, through
+the real edge functions, with real signed-in user tokens.
+
+**How.** Two throwaway accounts and two roster rows were created at #120 and
+#121, below all 119 real players. Every step went through the deployed HTTP
+endpoints — `claim-player`, `create-challenge`, `respond-to-challenge`,
+`submit-result` — not through SQL, so the eligibility rules, the open-player
+rule, the cooldowns and the confirmation handshake were all genuinely exercised.
+
+**15/15 checks passed:**
+
+- both roster rows claimed and bound to an account
+- the player below challenged the one above; the new open-player rule returned
+  `challenger_protected = true`, which is right — nobody else was engaged
+- accepting created a match with the challenger as `player1`, the convention the
+  ladder maths depends on
+- both players submitted the same score; the match went to `confirmed`
+- **the winner took the loser's spot and the loser dropped to the winner's** —
+  the first time the 2026-08-14 swap has moved anyone
+- stats: winner 1W-0L with `challenger_wins` credited and a streak of 1; loser
+  0W-1L
+- the loser picked up a `post_match` cooldown
+- the league feed carried `challenge_issued`, `challenge_accepted`,
+  `match_confirmed` and the two `match_fee_recorded` rows
+- both players were notified at every stage
+- **the 119 real players did not move a single spot**
+
+**Everything was removed afterwards.** Accounts, roster rows, rankings, match,
+challenge, stats, cooldowns, notifications, feed rows and audit rows. Verified
+after: 0 test rows, roster back to 119, positions 1–119 contiguous with no gaps
+or duplicates, top five unchanged, 0 challenges, 0 matches, 0 notifications.
+
+**One thing the test itself turned up.** Submitting a result with a payment
+method writes real rows into `treasury_ledger`, so the run put two $5 match-fee
+entries into Carl's live ledger. They were removed and the treasury is back to
+0 rows and a 0 balance — but it is worth knowing that a match fee is a treasury
+write, not just a note on the match.
+
+---
+
 ## 2026-08-25 — The rest of the questionnaire, and what a review of it caught
 
 **Carl asked:** the remaining answers from the league questionnaire — K3, H1, H2,
