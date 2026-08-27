@@ -20,3 +20,10 @@ npm-build-log.txt
 .claude-flow/
 .mcp.json
 *.bak
+
+# Generated mirrors of .claude/agents and .claude/skills for other agent
+# runtimes. docs/ruflo.md is explicit that .claude/agents/ and .claude/skills/
+# are the ONLY committed Claude Code footprint, so these exports do not belong
+# in the product repo — they are regenerated, not authored.
+.agents/
+.codex/

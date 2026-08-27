@@ -84,7 +84,15 @@ defaults (identical to the upstream app — this is the same league):
   their columns explicitly so a new column is never published by accident, and
   the default-privilege grant that would re-open the next new table to `anon` is
   revoked. Widening that surface is a deliberate act: add the column to the
-  view, and expect `test/guest-access.test.mjs` to argue with you
+  view, and expect `test/guest-access.test.mjs` to argue with you.
+  **Supabase's database linter reports all six as `security_definer_view`
+  ERRORs. That is expected and must not be "fixed".** Those views run with the
+  owner's rights on purpose — that is what lets a signed-out visitor read a
+  scores-only slice of `matches`, a table whose RLS is participant-only.
+  Switching them to `security_invoker` would return nothing to `anon` and
+  silently kill guest access and the live scoreboard. The `WHERE` clause and
+  the explicit column list are the boundary, and they are verified from outside
+  with the public key
 - **The league runs continuously — there are no seasons.** No season start, no
   offseason, no rollover; the challenge list is always live. Never use season
   framing in UI copy, admin labels, emails or customer docs — say "the list" or
