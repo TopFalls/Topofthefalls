@@ -19,6 +19,54 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-25 — Admin-entered results tested; a test admin account was left behind and removed
+
+**The K3 admin-entry path had never run.** It was rewritten substantially after
+the adversarial review, so the version in production was untested code. It has
+now been exercised against the live project, both branches, **15/15**:
+
+- a normal player is refused (403)
+- an off-menu game and a race below the league minimum are both refused with a
+  readable reason instead of an opaque 500
+- **the branch that matters:** two players arranged a challenge in the app, then
+  the admin recorded the result — it *finished that challenge* rather than
+  writing a rival one. Exactly one challenge exists afterwards, `confirmed`, so
+  the hourly expiry cron can no longer forfeit it and overturn the result an
+  hour later. That was the critical review finding and it is now proven fixed.
+- the ladder swapped, stats and the challenge counter both moved
+- recording the identical match twice is refused
+- an inactive player cannot be moved up by an admin-entered result
+- the 119 real players did not move
+
+**A throwaway admin account survived the test's own cleanup.** The test created
+one to call the admin path, and the delete did not take — leaving a live
+`profiles` row with `role='admin'` on the production project. It was spotted
+because the cleanup printed an admin count of 3 where 2 was expected, and
+removed immediately along with the audit rows that were blocking it by foreign
+key. Verified after: 0 test accounts, 0 orphan profiles, admins back to exactly
+Carl (`super_admin`) and Mike (`admin`), 7 auth accounts, roster 119.
+
+**The lesson is the cleanup, not the test.** Deleting an auth user through the
+admin API fails silently when `audit_events.actor_profile_id` still references
+the profile. Any future test that grants a role must check the admin count
+afterwards, not just that its own rows are gone.
+
+**Also closed in this pass:**
+- `.agents/` and `.codex/` had been swept into a commit by `git add -A`. They
+  are generated mirrors for other agent runtimes, and `docs/ruflo.md` is
+  explicit that `.claude/agents/` and `.claude/skills/` are the only committed
+  Claude Code footprint. Untracked and gitignored.
+- `engaged_player_ids()` was granted to `authenticated`. Its only caller runs on
+  the service role, so the grant handed every signed-in player a
+  SECURITY DEFINER function listing who is tied up league-wide. Revoked, then
+  verified live that a challenge can still be issued.
+- Supabase's linter reports all six guest views as `security_definer_view`
+  ERRORs. That is deliberate and is now written into `CLAUDE.md` — switching
+  them to `security_invoker` would return nothing to `anon` and silently kill
+  guest access and the live scoreboard.
+
+---
+
 ## 2026-08-25 — The golden path was walked end to end for the first time
 
 **Not a change — a test.** Claim → challenge → accept → submit → confirm had
