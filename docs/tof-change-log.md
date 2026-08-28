@@ -19,6 +19,48 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-08-28 — Treasury privacy confirmed with a real non-admin session
+
+**Closes the caveat left on 2026-08-17.** That entry said the activity-feed
+treasury policy was "confirmed bound with the right predicate but never
+exercised by a real non-admin session", because the only two claimed accounts
+on this instance are both admins. It has now been exercised properly.
+
+**How.** A throwaway ordinary player and a throwaway admin were created, and a
+**real $250.00 credit** was put in the ledger along with the `activity_feed`
+row `manage-treasury` writes beside it — so there was actual money to leak.
+
+**An ordinary signed-in player sees no treasury at all:**
+
+| | what they get |
+|---|---|
+| `treasury_ledger` | 0 rows |
+| `treasury_ledger_effects` | 0 rows |
+| `treasury_summary` | one row of **zeros** — `balance_cents: 0`, `entry_count: 0` — while the real balance was 25000 |
+| `admin_dashboard_league_overview` | `treasury_balance_cents: 0`, `treasury_last_entry_at: null` |
+| the activity feed | the league's other events, and **no** `treasury_entry_*` row |
+| `manage-treasury` | HTTP 403 — they cannot write one either |
+
+**A signed-out visitor** gets HTTP 401 on all three treasury relations and all
+four `admin_dashboard_*` views, and the guest feed carries no treasury row.
+
+**An admin sees all of it** — ledger, effects, summary and the feed entry. The
+lockdown did not lock Carl out.
+
+**Two things this run got wrong before getting right.** The first probe reported
+`treasury_summary` as a leak because it counted rows rather than reading them:
+an aggregate view over zero RLS-permitted rows still returns one row, of zeros.
+Then `admin_dashboard_leaderboard` showed every player at 0 wins, which proved
+nothing either way — every player on this instance genuinely has 0 matches. So
+it was re-run with two players given **different real records**, 11-3 and 22-7.
+Each saw the other as 0-0 and their own record correctly, and a direct query for
+the other's row returned nothing. Records are private; the zeros were RLS.
+
+**Cleanup verified:** treasury back to 0 rows, no leftover test players, list
+back to 119, admins back to exactly Carl (`super_admin`) and Mike (`admin`).
+
+---
+
 ## 2026-08-25 — Admin-entered results tested; a test admin account was left behind and removed
 
 **The K3 admin-entry path had never run.** It was rewritten substantially after
