@@ -128,6 +128,59 @@ cd /c/Users/cdali/Downloads/Topofthefalls
 This is a **Vite + React SPA** (`npm run build` → `tsc -b && vite build`, output
 `dist/`), not a Next.js app. Vercel framework preset: Vite.
 
+## How this deploys — three separate surfaces
+
+`git push` on its own ships **nothing**. The Vercel project has no Git
+repository connected (attaching it needs Carl, who owns the org), and edge
+functions and migrations never went through Git in the first place. Each
+surface is published on its own:
+
+```bash
+npx vercel --prod --yes --scope tof2
+```
+
+```bash
+npx supabase functions deploy <name> --project-ref dpbgdisezxlttwrxqanu
+```
+
+Migrations are applied straight to the project — the Supabase MCP
+`apply_migration`, or the dashboard SQL editor.
+
+`--scope tof2` and `--project-ref` are not optional. Without the scope the
+Vercel CLI fails "Not authorized"; without the ref the Supabase CLI can reach
+two sibling leagues' projects that are also on this account.
+
+**After a frontend deploy, verify by following the real asset hash.** Fetch the
+live `index.html`, read the `/assets/index-*.js` it names, fetch that and grep
+for a string unique to the new code. A 200 on an asset path proves nothing —
+the SPA rewrite returns `index.html` for any path — and the apex domain
+308-redirects to `www.`, so `curl` needs `-L`.
+
+### Never run `supabase db push` against this project
+
+Migrations have always been applied directly, so
+`supabase_migrations.schema_migrations` records the *time each was applied*,
+while the local filenames carry the time each was *written*. The two sets do
+not overlap at all: **none** of the 61 local migration versions appears in the
+ledger. `db push` would therefore treat every one as unapplied and replay the
+whole history against a database that already has it.
+
+That is not a harmless no-op. 26 of those files contain statements that execute
+at migration time and are not re-runnable — 12 with a top-level `CREATE POLICY`
+(Postgres has no `IF NOT EXISTS` for policies, so it errors outright) and 14
+with unguarded `INSERT`s into `audit_events` and `league_settings` that would
+duplicate rows.
+
+Two migrations — `align_rules_with_league_document` and
+`inactive_lifecycle_and_wash` — have no ledger entry under any name. They *were*
+applied; their functions, tables and columns were all confirmed present live.
+The ledger simply never recorded them. Do not "fix" that by pushing.
+
+If the ledger is ever worth reconciling, the tool is
+`supabase migration repair --status applied <version>`, which records a
+migration as applied without executing anything. That is a deliberate,
+separate decision — not a step in a deploy.
+
 ## The editing room
 
 Any change, edit, fix or addition Carl asks for goes through
