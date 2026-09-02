@@ -22,6 +22,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const [resent, setResent]   = useState(false);
+  // Supabase refuses a second code for the same address inside 60 seconds and
+  // returns 429 `over_email_send_rate_limit`. Players were tapping Send four
+  // and five times because nothing on screen told them a code was already on
+  // its way, so they collected refusals instead of a code. Count it down where
+  // they can see it.
+  const [cooldown, setCooldown] = useState(0);
   const codeRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -29,6 +35,27 @@ export default function LoginPage() {
       setTimeout(() => codeRef.current?.focus(), 150);
     }
   }, [step]);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  // The raw message is "For security purposes, you can only request this after
+  // 29 seconds." Nobody standing at a pool table should have to parse that.
+  const friendlyAuthError = (message: string): string => {
+    const wait = /after (\d+) seconds/i.exec(message);
+    if (wait) return `A code is already on its way. You can ask for another in ${wait[1]} seconds.`;
+    if (/rate limit/i.test(message)) return 'Too many tries just now. Give it a minute and try again.';
+    if (/invalid|not found/i.test(message)) return 'That email address does not look right. Check it and try again.';
+    return message;
+  };
+
+  const secondsToWait = (message: string): number => {
+    const wait = /after (\d+) seconds/i.exec(message);
+    return wait ? Number(wait[1]) : 60;
+  };
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +66,17 @@ export default function LoginPage() {
       email: email.trim().toLowerCase(),
     });
     setLoading(false);
-    if (err) { setError(err.message); }
-    else     { setStep('code'); setResent(false); }
+    if (err) {
+      setError(friendlyAuthError(err.message));
+      setCooldown(secondsToWait(err.message));
+      // Still move to the code screen: a code from the earlier tap is on its
+      // way, and leaving them on the email form makes them send yet again.
+      if (/after \d+ seconds/i.test(err.message)) setStep('code');
+    } else {
+      setStep('code');
+      setResent(false);
+      setCooldown(60);
+    }
   };
 
   const handleVerifyCode = async (e: React.FormEvent) => {
@@ -65,7 +101,13 @@ export default function LoginPage() {
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
     });
-    if (!err) setResent(true);
+    if (err) {
+      setError(friendlyAuthError(err.message));
+      setCooldown(secondsToWait(err.message));
+      return;
+    }
+    setResent(true);
+    setCooldown(60);
   };
 
   const handleCodeChange = (val: string) => {
@@ -177,9 +219,10 @@ export default function LoginPage() {
                 fullWidth
                 size="lg"
                 loading={loading}
-                disabled={!email.trim()}
+                disabled={!email.trim() || cooldown > 0}
               >
-                <Mail size={16} /> Send Sign-In Code
+                <Mail size={16} />
+                {cooldown > 0 ? `Wait ${cooldown}s` : 'Send Sign-In Code'}
               </Button>
 
               {/* Helper bumped from text-xs (12px) to text-sm (14px) for legibility.
@@ -275,7 +318,12 @@ export default function LoginPage() {
               </Button>
 
               <div className="text-center">
-                {resent ? (
+                {cooldown > 0 ? (
+                  <p className="text-[#9CA3AF] text-sm font-[Barlow]">
+                    {resent ? 'Code resent. ' : 'Code sent. '}
+                    Check your email — you can ask for another in {cooldown}s.
+                  </p>
+                ) : resent ? (
                   <p className="text-[#22C55E] text-sm font-[Barlow]">Code resent!</p>
                 ) : (
                   <button
