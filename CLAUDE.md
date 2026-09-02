@@ -131,7 +131,7 @@ This is a **Vite + React SPA** (`npm run build` → `tsc -b && vite build`, outp
 ## How this deploys — three separate surfaces
 
 `git push` on its own ships **nothing**. The Vercel project has no Git
-repository connected (attaching it needs Carl, who owns the org), and edge
+repository connected (see the note below on who can attach it), and edge
 functions and migrations never went through Git in the first place. Each
 surface is published on its own:
 
@@ -149,6 +149,24 @@ Migrations are applied straight to the project — the Supabase MCP
 `--scope tof2` and `--project-ref` are not optional. Without the scope the
 Vercel CLI fails "Not authorized"; without the ref the Supabase CLI can reach
 two sibling leagues' projects that are also on this account.
+
+### Who can connect the Git repository
+
+`TopFalls` is a **personal GitHub account, not an organisation** — verified
+2026-09-02 (`owner_type: User`; `/orgs/TopFalls` 404s). Earlier notes in this
+repo called it an org and said only "the org owner" could act; that was wrong,
+and it matters, because a personal account has no approval flow to wait on.
+
+`cdalin1985` is a collaborator with `push` but not `admin`, so it cannot install
+the Vercel GitHub App. **Only whoever can sign in as `TopFalls` can**, and once
+signed in it takes about a minute:
+
+1. https://vercel.com/tof2/topofthefalls/settings/git → **Connect Git Repository**
+2. Authorise the **Vercel** GitHub App for the `TopFalls` account
+3. Grant it the `Topofthefalls` repository, production branch `main`
+
+The Vercel half needs a member of the `tof2` team, which `cdalin1985` already
+is. The GitHub half is the only blocker.
 
 **After a frontend deploy, verify by following the real asset hash.** Fetch the
 live `index.html`, read the `/assets/index-*.js` it names, fetch that and grep
