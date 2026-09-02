@@ -157,9 +157,10 @@ two sibling leagues' projects that are also on this account.
 repo called it an org and said only "the org owner" could act; that was wrong,
 and it matters, because a personal account has no approval flow to wait on.
 
-`cdalin1985` is a collaborator with `push` but not `admin`, so it cannot install
-the Vercel GitHub App. **Only whoever can sign in as `TopFalls` can**, and once
-signed in it takes about a minute:
+**Carl controls the `TopFalls` account** — confirmed 2026-09-02. Chase had him
+create it so he could run the league himself, and Carl added Chase as a
+collaborator. `cdalin1985` has `push` but not `admin`, so it cannot install the
+Vercel GitHub App; Carl can, authorising his own account, in about a minute:
 
 1. https://vercel.com/tof2/topofthefalls/settings/git → **Connect Git Repository**
 2. Authorise the **Vercel** GitHub App for the `TopFalls` account
