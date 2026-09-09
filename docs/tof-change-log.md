@@ -108,11 +108,28 @@ is true.
 - No cooldown is released on cancel. There is no challenge-issued cooldown to
   release — `post_match` is the only type in live use — so a cancel already
   leaves both players free to challenge again.
-- **Not deployed from this session.** GitHub push is refused with a 403 — the
-  Claude GitHub App is not installed on the `TopFalls` account, and the Vercel
-  token in reach has no `tof2` scope. Both need Carl, and both are the same kind
-  of one-minute authorisation as connecting the Git repo. The commit went to
-  Chase as a patch.
+- **Shipped in three parts, and the frontend is still waiting.** The migration
+  and the edge function are live; the code is merged to `main` (`4029203`); the
+  Vercel deploy is blocked. Nothing is half-applied — both deployed pieces are
+  backwards-compatible with the frontend currently serving — but **Carl does not
+  see either fix until the frontend goes out.**
+- **`CLAUDE.md` was wrong about who can deploy, and it cost an hour.** It said
+  `cdalin1985` was a member of the `tof2` Vercel team. He is not: after a fresh
+  `vercel login`, `vercel teams ls` shows only `cdalin-projects`. Corrected in
+  the same commit, along with the fact that the Claude GitHub App is not
+  installed on `TopFalls` either — so pushes and PR creation both 403, while
+  GitHub MCP *reads* keep working and make it look like access is fine.
+- **The fix for both is one free thing, not a paid seat.** A Vercel Member seat
+  is $20/month on top of Carl's $20 (verified against Vercel's own pricing
+  docs), and free Viewer seats cannot deploy. Connecting the Git repository
+  costs nothing, needs no seat, and makes every push to `main` deploy itself.
+  That is the ask that should go to Carl.
+- **Force Cancel has never been executed end to end.** The RPC is verified
+  structurally — it exists, is `SECURITY DEFINER`, and grants EXECUTE to
+  `authenticated` only — but this session's database access was read-only, so
+  nobody has watched it cancel a real challenge. Given the bug being fixed is a
+  button that reported success while doing nothing, that first real click is the
+  proof and it still owes to be done.
 
 ---
 

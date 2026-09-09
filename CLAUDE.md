@@ -166,8 +166,39 @@ Vercel GitHub App; Carl can, authorising his own account, in about a minute:
 2. Authorise the **Vercel** GitHub App for the `TopFalls` account
 3. Grant it the `Topofthefalls` repository, production branch `main`
 
-The Vercel half needs a member of the `tof2` team, which `cdalin1985` already
-is. The GitHub half is the only blocker.
+**Correction, 2026-09-09: `cdalin1985` is NOT a member of the `tof2` team.**
+This section previously said he was, and that the GitHub half was the only
+blocker. Both halves are blocked, and the wrong half was chased for an hour
+before anyone checked. After a *fresh* `vercel login`, `vercel teams ls` returns
+exactly one team — `cdalin-projects` / `cdalin1985`. Carl's `Totf` / `tof2`
+(`team_TiDDLGgPBC8TlMQKmrNcFNl8`) is not listed, `vercel --scope tof2` fails
+"The specified scope does not exist", and the login itself warns *"Your
+previously selected team is no longer accessible"*. Membership lapsed at some
+point; when is not recorded.
+
+**Do not "fix" this by deploying to `cdalin-projects`.** That is the upstream
+team, and pushing Carl's build there is the instance-boundary condition.
+
+**The seat is not the answer; the Git connection is.** Verified against
+`vercel.com/docs/plans/pro-plan` (updated 2026-09-02): Pro is a $20/month
+platform fee including **one** deploying seat, and each additional Owner or
+Member seat is **$20/month**. Viewer seats are free and unlimited but "cannot
+configure or deploy projects", so a free seat would not help. Adding Chase as a
+Member would take Carl from $20 to $40/month. Connecting the Git repository
+instead costs nothing and needs no seat at all: the deploy is triggered by the
+webhook and attributed to the team, so whoever pushes needs no Vercel account.
+Carl owns the team and can do it himself.
+
+**The Claude GitHub App is not installed on `TopFalls` either.** `git push`
+over HTTPS returns 403 "Claude doesn't have GitHub access to
+TopFalls/Topofthefalls", and GitHub MCP *writes* (create PR) return 403
+"Resource not accessible by integration". MCP **reads** work fine, which is
+misleading — being able to list branches says nothing about being able to push.
+Until Carl installs it at
+https://github.com/apps/claude/installations/select_target, work has to leave
+this session as a `git format-patch` file for Chase to `git am` locally. That
+round trip is slow and error-prone; it is worth asking for the install every
+time it comes up.
 
 **After a frontend deploy, verify by following the real asset hash.** Fetch the
 live `index.html`, read the `/assets/index-*.js` it names, fetch that and grep
