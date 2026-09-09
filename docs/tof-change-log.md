@@ -99,8 +99,15 @@ ladder shift and snapshot round-trip both simulated against the live row set
 before applying
 
 **Flags:**
-- **Not deployed.** Same wall as the last change: the Vercel frontend deploy is
-  blocked until Carl connects the Git repository.
+- **Deployed after all.** This first read "not deployed — same wall as the last
+  change". Chase pushed it out from his own checkout shortly afterward, and it
+  is live: verified 2026-09-09 20:14 UTC by asset hash, with
+  `topofthefalls.online` now naming `/assets/index-ClChQN22.js` and the
+  `AdminPage-Py0dzo7A.js` chunk it loads calling both `admin_remove_player` and
+  `admin_restore_player`. Both functions exist live as `SECURITY DEFINER`, so
+  the migration landed too. The wall is real but it stops *this session*, not
+  Chase — connecting the Git repository is still the fix that removes the manual
+  step.
 - **A hard-deleted player has no Put back button**, because there is no row left
   to hang it on. `admin_restore_player` handles that case, but reversing it
   today means calling the function directly. A removals list on the Settings tab
@@ -198,11 +205,19 @@ is true.
 - No cooldown is released on cancel. There is no challenge-issued cooldown to
   release — `post_match` is the only type in live use — so a cancel already
   leaves both players free to challenge again.
-- **Shipped in three parts, and the frontend is still waiting.** The migration
-  and the edge function are live; the code is merged to `main` (`4029203`); the
-  Vercel deploy is blocked. Nothing is half-applied — both deployed pieces are
-  backwards-compatible with the frontend currently serving — but **Carl does not
-  see either fix until the frontend goes out.**
+- **Shipped in three parts; all three are now live.** This flag first read "the
+  frontend is still waiting" — the migration and the edge function were live,
+  the code was merged to `main` (`4029203`), and the Vercel deploy was blocked.
+  **The frontend has since gone out, verified 2026-09-09 20:06 UTC by following
+  the real asset hash**, not by a 200 on an asset path:
+  `topofthefalls.online` names `/assets/index-CmsBW3cg.js`; that bundle carries
+  all seven `env(safe-area-inset-*)` uses the new `Layout`, `OfflineBanner` and
+  `PWAInstallBanner` add (the old code had exactly one, in `BottomNav`); and the
+  `AdminPage-ebZRAoDK.js` chunk it loads calls `admin_cancel_challenge` and
+  sends `challenge_outcome`. The RPC exists live and is `SECURITY DEFINER`, and
+  `resolve-dispute` is deployed at v2. **Carl can see both fixes now.** Who ran
+  that deploy is not recorded here — the Vercel MCP token still 403s on the
+  `tof2` scope, so it was not this session.
 - **`CLAUDE.md` was wrong about who can deploy, and it cost an hour.** It said
   `cdalin1985` was a member of the `tof2` Vercel team. He is not: after a fresh
   `vercel login`, `vercel teams ls` shows only `cdalin-projects`. Corrected in
@@ -219,7 +234,13 @@ is true.
   `authenticated` only — but this session's database access was read-only, so
   nobody has watched it cancel a real challenge. Given the bug being fixed is a
   button that reported success while doing nothing, that first real click is the
-  proof and it still owes to be done.
+  proof and it still owes to be done. **Re-checked 2026-09-09 20:10 UTC and it
+  is still owed:** `audit_events` holds no cancel action of any kind, and the
+  one `cancelled` challenge in the table is still the 2026-09-06 row from the
+  player-side path. Now that the frontend is live, the check is one click in
+  Admin → Challenges on a `pending` or `scheduled` challenge — there are 11 and
+  9 of those respectively — and the proof is a fresh audit row plus the
+  challenge actually leaving the list.
 
 ---
 
