@@ -67,40 +67,28 @@ export function RankingsTab() {
     setSaving(true);
     setSaveError('');
     // The RPC reads previous positions from the table itself; only the target
-    // order is sent. The fallback path still writes previous_position from the
-    // staged rows, matching the pre-RPC behavior.
+    // order is sent. It writes every row in one transaction.
+    //
+    // There used to be a per-row fallback here for databases without the
+    // function. It could never have worked: `rankings` has RLS on with a SELECT
+    // policy and nothing else, so those writes matched zero rows and returned
+    // no error -- the save would have reported success having changed nothing.
     const payload = displayedOrder.map((r, i) => ({
       player_id: r.player_id,
       position: i + 1,
-      previous_position: r.position,
     }));
 
-    // Prefer the atomic RPC (single transaction); fall back to per-row updates
-    // when the function has not been deployed to this database yet.
     const { error: rpcError } = await supabase.rpc('admin_reorder_rankings', {
-      p_order: payload.map(({ player_id, position }) => ({ player_id, position })),
+      p_order: payload,
     });
     if (rpcError) {
-      const functionMissing = rpcError.code === 'PGRST202' || rpcError.code === '42883';
-      if (!functionMissing) {
-        setSaveError(rpcError.message);
-        setSaving(false);
-        return;
-      }
-      const results = await Promise.all(
-        payload.map((row) =>
-          supabase.from('rankings')
-            .update({ position: row.position, previous_position: row.previous_position })
-            .eq('player_id', row.player_id)
-        )
+      setSaveError(
+        rpcError.code === 'PGRST202' || rpcError.code === '42883'
+          ? 'Reordering is not available on this database yet.'
+          : rpcError.message,
       );
-      const firstError = results.find((r) => r.error)?.error;
-      if (firstError) {
-        setSaveError(`Save may be incomplete — reload before retrying. (${firstError.message})`);
-        setSaving(false);
-        qc.invalidateQueries({ queryKey: ['admin-rankings'] });
-        return;
-      }
+      setSaving(false);
+      return;
     }
 
     setSaving(false);

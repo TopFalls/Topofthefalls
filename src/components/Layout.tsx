@@ -176,11 +176,21 @@ export const Layout: React.FC = () => {
       <OfflineBanner show={isOffline} />
 
       {/* Main content area */}
+      {/* index.html sets viewport-fit=cover and a translucent status bar, so an
+          installed app is laid out from the physical top of the screen -- under
+          the clock and the Dynamic Island. Without these insets a Back button at
+          the top of a screen sits inside that strip, where iOS takes the tap
+          before the app sees it. Carl found it as "the back button doesn't work,
+          but it works in landscape": landscape hides the status bar, which drops
+          the top inset to zero and frees the button. The left/right insets keep
+          landscape content clear of the notch. */}
       <main
         className="relative z-10"
         style={{
           paddingBottom: showNav ? '80px' : 0,
-          paddingTop: isOffline ? '36px' : 0,
+          paddingTop: isOffline ? 'calc(env(safe-area-inset-top) + 36px)' : 'env(safe-area-inset-top)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
           minHeight: '100svh',
         }}
       >

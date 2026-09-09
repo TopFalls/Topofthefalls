@@ -47,6 +47,9 @@ export const PWAInstallBanner: React.FC = () => {
             background: 'rgba(13,13,13,0.97)',
             backdropFilter: 'blur(12px)',
             borderBottom: '1px solid var(--toc-theme-border-strong)',
+            // Same clearance as the main content: this banner is pinned to the
+            // physical top of the screen, under the status bar.
+            paddingTop: 'calc(env(safe-area-inset-top) + 0.625rem)',
           }}
         >
           <div className="max-w-sm mx-auto flex items-center gap-3">

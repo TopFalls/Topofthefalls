@@ -19,6 +19,103 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-09-09 — Force Cancel cancels, and the Back button comes out from under the clock
+
+**Carl asked:** "Also the force cancel for challenges does not seem to be
+working." And, after reading the write-up: "There are certain screens that my
+back button doesn't work on my iPhone. I can get it to work by turning the phone
+to landscape mode and then the button works."
+
+**Shipped:** Two unrelated bugs in one update, because the second is three lines
+and was hitting every iPhone in the league rather than just the admins.
+
+**Force Cancel had never worked once.** Not on any challenge, since the app went
+up. `ChallengesTab` cancelled by updating the row straight from the browser.
+`challenges` has RLS on and exactly one policy — SELECT, "Anyone can view
+challenges" — so there is no UPDATE policy for the row to match. The subtlety is
+that `authenticated` still holds the *table-level* UPDATE grant, so Postgres
+raises nothing: zero rows qualify, the statement succeeds, PostgREST returns
+success with a null error, and `if (error)` never fires. The confirm box closed,
+the list refetched unchanged, and Carl got no error to report. Live corroboration:
+not one cancel or wash audit event has ever been written, and the single
+`cancelled` row in the table came from a player-side path.
+
+Cancelling now goes through `admin_cancel_challenge`, a SECURITY DEFINER RPC in
+the shape that already works here (`admin_resolve_wash`): it checks
+`is_league_admin()` itself, voids any arranged-but-unplayed match under the
+challenge, clears a moot wash alert, writes the activity-feed entry, notifies
+both players, and records the audit event. It refuses once a result is final,
+with a readable reason, rather than cancelling a challenge whose match has
+already moved the ladder.
+
+**A correction to the write-up Carl saw.** That draft said Force Forfeit left the
+challenge "stuck in the admin list forever". That was wrong, and reading
+`resolve-dispute` settled it: line 118 already stamps the challenge from the
+service role, so the challenge does clear. The real defect was smaller — an admin
+forfeit was recorded as `resolved`, the same as a settled dispute, because the
+client-side line that would have said `forfeited` was the same silent no-op.
+`resolve-dispute` now takes a `challenge_outcome` (`resolved` by default,
+`forfeited` when an admin forfeits) and the dead client write is gone. The two
+other callers — a real dispute, and an admin entering a played result — correctly
+keep the default.
+
+**The Back button.** `index.html` sets `viewport-fit=cover` and a translucent
+status bar, so an installed app is laid out from the physical top of the screen,
+under the clock and the Dynamic Island. Nothing compensated: `env(safe-area-inset-*)`
+appeared exactly once in all of `src/`, in `BottomNav` for the bottom. `Layout`
+gave `<main>` a top padding of 0, and the affected screens put Back at the top
+with 16px of their own, well inside the ~47-59px portrait inset — so iOS took the
+tap before the app saw it. Landscape hides the status bar and drops that inset to
+zero, which is exactly why rotating the phone "fixed" it. `<main>` now carries the
+top inset (and the left/right ones, so landscape clears the notch), and the two
+top-pinned banners take the same clearance. Screens with Back at the top —
+a player, a challenge, a match, the activity feed, the treasury, the admin
+screens — were affected; home and rankings never were, which is what Carl meant
+by "certain screens".
+
+**Also removed:** the per-row fallback behind the ladder reorder in
+`RankingsTab`. `rankings` is SELECT-only too, so that path could never have
+worked — it would have reported a successful save having changed nothing. The
+RPC it falls back from is deployed and working, so this was a dormant copy of
+the same bug.
+
+**Files:** `supabase/migrations/20260909120000_admin_cancel_challenge.sql`,
+`src/components/admin/ChallengesTab.tsx`,
+`supabase/functions/resolve-dispute/index.ts`, `src/components/Layout.tsx`
+**Branch:** `claude/web-app-issues-carl-1zhzh9` (Chase asked for a branch this
+time, so this did not go straight to `main`)
+**Gates:** build ✓ · tests 139/139 ✓ · lint clean for changed files (two
+pre-existing `react-refresh` errors in `AdminAlertsCard` and
+`StatsResetControls` are untouched) · `supabase-migration-reviewer` and
+`demo-readiness-checker` both run
+
+**What the migration review caught.** The first cut of the guard only refused a
+match that was already `confirmed` or `resolved`. That was too narrow. Once
+either player submits a result, `submit-result` books the match fees into the
+treasury ledger on every path that reaches `disputed`, and nothing in this
+function reverses them — so Force Cancel would have voided a match that had
+already been paid for and left the credits stranded. It now also refuses
+`submitted`, `confirming` and `disputed`, and sends the admin to the Disputes or
+Matches tab, which is where those actually get finished. `admin_resolve_wash`
+draws the same line, cancelling only matches still in `scheduled` or
+`in_progress`. The review also caught the refusal message pointing at a "reopen
+it as a dispute" workflow that does not exist in this app; reworded to say what
+is true.
+
+**Flags:**
+- The write-up Carl already read overstated the Force Forfeit bug; corrected
+  above and in the document sent back to him.
+- No cooldown is released on cancel. There is no challenge-issued cooldown to
+  release — `post_match` is the only type in live use — so a cancel already
+  leaves both players free to challenge again.
+- **Not deployed from this session.** GitHub push is refused with a 403 — the
+  Claude GitHub App is not installed on the `TopFalls` account, and the Vercel
+  token in reach has no `tof2` scope. Both need Carl, and both are the same kind
+  of one-minute authorisation as connecting the Git repo. The commit went to
+  Chase as a patch.
+
+---
+
 ## 2026-08-28 — Treasury privacy confirmed with a real non-admin session
 
 **Closes the caveat left on 2026-08-17.** That entry said the activity-feed

@@ -13,6 +13,10 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 };
 const ALLOWED_RESOLUTION_STATUSES = ['disputed'];
 const FORCE_COMPLETE_STATUSES = ['scheduled', 'in_progress', 'submitted'];
+// What the challenge behind the match ends up as. A settled dispute is
+// 'resolved'; an admin forfeit is 'forfeited' and should read that way in the
+// activity feed and the admin log.
+const CHALLENGE_OUTCOMES = ['resolved', 'forfeited'];
 
 function validateFinalScore(
   winnerId: string,
@@ -63,7 +67,14 @@ serve(async (req) => {
       player1_payment_method,
       player2_payment_method,
       force_complete = false,
+      challenge_outcome = 'resolved',
     } = await req.json();
+
+    // An admin forfeit and a settled dispute both end the match here, but they
+    // are not the same outcome and the challenge should not claim they are.
+    if (!CHALLENGE_OUTCOMES.includes(challenge_outcome)) {
+      return new Response(JSON.stringify({ error: 'Invalid challenge outcome.' }), { status: 400, headers: cors });
+    }
 
     const normalizePayment = (value: unknown): PaymentMethod | null => {
       if (value == null || value === '') return null;
@@ -115,7 +126,7 @@ serve(async (req) => {
     }
 
     if (match.challenge_id) {
-      const { error: challengeError } = await supabase.from('challenges').update({ status: 'resolved' }).eq('id', match.challenge_id);
+      const { error: challengeError } = await supabase.from('challenges').update({ status: challenge_outcome }).eq('id', match.challenge_id);
       if (challengeError) throw challengeError;
     }
 
@@ -217,13 +228,21 @@ serve(async (req) => {
       supabase.from('players').select('full_name').eq('id', loser_id).single(),
     ]);
     await supabase.from('notifications').insert([
-      { player_id: winner_id, type: 'result_confirmed', title: '🏆 Dispute resolved — you won!', body: `Admin ruled in your favor. ${final_score_player1}–${final_score_player2}.`, reference_id: match_id, reference_type: 'match' },
-      { player_id: loser_id,  type: 'result_confirmed', title: '📊 Dispute resolved',            body: `Admin ruled: ${wp.data?.full_name} wins ${final_score_player1}–${final_score_player2}.`, reference_id: match_id, reference_type: 'match' },
+      challenge_outcome === 'forfeited'
+        ? { player_id: winner_id, type: 'result_confirmed', title: '🏆 Match awarded to you', body: `An admin awarded you the match by forfeit. ${final_score_player1}–${final_score_player2}.`, reference_id: match_id, reference_type: 'match' }
+        : { player_id: winner_id, type: 'result_confirmed', title: '🏆 Dispute resolved — you won!', body: `Admin ruled in your favor. ${final_score_player1}–${final_score_player2}.`, reference_id: match_id, reference_type: 'match' },
+      challenge_outcome === 'forfeited'
+        ? { player_id: loser_id, type: 'result_confirmed', title: '📊 Match forfeited', body: `An admin awarded the match to ${wp.data?.full_name} by forfeit.`, reference_id: match_id, reference_type: 'match' }
+        : { player_id: loser_id, type: 'result_confirmed', title: '📊 Dispute resolved', body: `Admin ruled: ${wp.data?.full_name} wins ${final_score_player1}–${final_score_player2}.`, reference_id: match_id, reference_type: 'match' },
     ]);
 
+    // A forfeit is not a settled dispute, and the feed should not call it one.
+    const wasForfeit = challenge_outcome === 'forfeited';
     await supabase.from('activity_feed').insert({
-      event_type: 'dispute_resolved',
-      headline: `Admin resolved disputed match: ${wp.data?.full_name} defeated ${lp.data?.full_name}`,
+      event_type: wasForfeit ? 'challenge_forfeited' : 'dispute_resolved',
+      headline: wasForfeit
+        ? `Admin awarded the match to ${wp.data?.full_name} by forfeit over ${lp.data?.full_name}`
+        : `Admin resolved disputed match: ${wp.data?.full_name} defeated ${lp.data?.full_name}`,
       detail: `Final score recorded as ${final_score_player1}–${final_score_player2}. Admin notes: ${notes ?? '—'}.`,
       actor_player_id: winner_id,
     });

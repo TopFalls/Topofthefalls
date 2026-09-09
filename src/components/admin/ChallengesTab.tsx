@@ -80,13 +80,27 @@ export function ChallengesTab() {
     }
   };
 
+  // Cancelling goes through admin_cancel_challenge, not a direct table write.
+  // `challenges` has no UPDATE policy, so a write from here matches zero rows
+  // and still reports success -- which is exactly how this button spent its
+  // whole life pretending to work.
   const handleCancel = async (c: ChallengeRow) => {
     setLoading(true);
     setActionError('');
-    const { error } = await supabase.from('challenges').update({ status: 'cancelled' }).eq('id', c.id);
+    const { error } = await supabase.rpc('admin_cancel_challenge', {
+      p_challenge_id: c.id,
+      p_reason: null,
+    });
     setLoading(false);
-    if (error) { setActionError(error.message); return; }
-    qc.invalidateQueries({ queryKey: ['admin-active-challenges'] });
+    if (error) {
+      setActionError(
+        error.code === 'PGRST202' || error.code === '42883'
+          ? 'Cancelling is not available on this database yet.'
+          : error.message,
+      );
+      return;
+    }
+    invalidateAfterChange();
     resetAction();
   };
 
@@ -96,6 +110,9 @@ export function ChallengesTab() {
     setActionError('');
     const challengerWon = winnerId === c.challenger_id;
     try {
+      // resolve-dispute settles the match and stamps the challenge in the same
+      // service-role call, so the challenge status travels with it rather than
+      // needing a second write from here that RLS would silently drop.
       await callEdgeFunction('resolve-dispute', {
         match_id: c.match_id,
         winner_id: winnerId,
@@ -103,11 +120,9 @@ export function ChallengesTab() {
         final_score_player2: challengerWon ? 0 : c.race_length,
         notes: 'Admin forfeit',
         force_complete: true,
+        challenge_outcome: 'forfeited',
       });
-      const { error } = await supabase.from('challenges').update({ status: 'forfeited' }).eq('id', c.id);
-      if (error) throw error;
-      qc.invalidateQueries({ queryKey: ['admin-active-challenges'] });
-      qc.invalidateQueries({ queryKey: ['rankings'] });
+      invalidateAfterChange();
       resetAction();
     } catch (err) {
       setActionError(edgeErrorMessage(err, 'Could not apply the forfeit.'));
