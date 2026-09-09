@@ -19,6 +19,96 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-09-09 — A Remove button that removes, and the near-miss that shaped it
+
+**Carl asked:** "When I remove players still keeps them as inactive rather then
+removing them."
+
+**He was reading it exactly right.** There was no Remove. The only control on the
+Players tab was a Deactivate/Activate toggle, which sets `is_active = false` and
+leaves everything else alone — the player keeps their ladder position and stays
+visible to the whole league and to signed-out visitors, struck through. Carl had
+been pressing the only red button available and it did what it said.
+
+**Shipped: two buttons that mean different things.**
+
+- **Deactivate** stays exactly as it was. Somebody taking a break keeps their
+  spot and comes back to it.
+- **Remove from list** is new. It takes them off the ladder, closes the gap
+  behind them, and the app decides what "off" means rather than the admin:
+  no history at all → the row is deleted outright; any match, challenge,
+  treasury entry or forfeit on record → the row stays, marked `removed_at`, off
+  the ladder and out of every list. Those old matches are half of somebody
+  else's win-loss record and deleting them would quietly change another
+  player's numbers.
+
+Both paths snapshot everything first into `player_removal_events`, and
+`admin_restore_player` reads it back — the player, their ladder spot, stats,
+feed, notifications and cooldowns. A removed player who still has a row gets a
+**Put back** button on the same screen. That undo is not a nicety: a delete
+without one would be a stop condition, and the pattern is the one
+`20260806121000_admin_stats_reset.sql` already set for stats.
+
+Removing is refused while the player has an open challenge, rather than
+orphaning it.
+
+**The near-miss.** The plan said "purge the 13 inactive players at positions
+111–123, all with zero history." By the time the work started there were
+**fourteen**. The fourteenth was **Kevin Mock at position 86** — a claimed
+account with a match played, a challenge, a $5 treasury entry and three
+notifications, deactivated hours earlier. A purge written as "delete the
+inactive players" would have deleted a real, paying league member. Re-deriving
+the list instead of trusting the one in the plan is the only reason it did not.
+Kevin is *deactivated*, which is the correct state for him, and he stays at #86.
+
+**The 13 are not purged by this change.** With a working button, the honest way
+to clear them is Carl pressing it — the audit trail then credits the person who
+actually decided, each removal is snapshotted, and it proves the button works on
+real data. A migration would have had to fake an admin identity to pass the
+permission gate.
+
+**Also fixed on the way:** `src/types/database.ts` was missing `inactive_since`
+and `inactive_drift_periods`, live on the table since the inactive lifecycle
+shipped. Adding `removed_at` surfaced them, and the build then caught the demo
+fixture missing all three. That is the schema-drift trap this project keeps
+falling into, working as intended for once.
+
+**What the migration review caught, and it mattered.** The first cut only took
+a removed player off the *ladder*. `public_players` has no `WHERE` clause at all
+and the base policy is `"Anyone can view players" USING (true)`, so a
+soft-removed player — the common case for anyone established enough to have
+played a match — would have stayed visible to every signed-in player and every
+signed-out visitor. That is Carl's original complaint reproduced almost exactly,
+by the change meant to fix it. `public_players` now filters `removed_at IS NULL`.
+Four smaller findings went with it: the table lock is taken *before* the ladder
+position is read (a concurrent ladder swap between the two would have closed the
+wrong gap — the reason `serialize_ranking_mutations` exists); restoring a
+hard-deleted player no longer forces them active, so somebody deactivated and
+then removed comes back deactivated; the snapshot table's `performed_by` and
+`restored_by` are `ON DELETE SET NULL`, matching `stats_reset_events`, so
+deleting an admin account later cannot be blocked by them; and the open-work
+guard now names only statuses `challenges` is really written to, checking
+unfinished matches separately instead of inferring them from a status that never
+occurs.
+
+**Files:** `supabase/migrations/20260909130000_remove_player_for_real.sql`,
+`src/components/admin/PlayersTab.tsx`, `src/types/database.ts`
+**Gates:** build ✓ · tests 139/139 ✓ (guest-access included) · lint clean on
+changed files · `supabase-migration-reviewer` run, findings above fixed ·
+ladder shift and snapshot round-trip both simulated against the live row set
+before applying
+
+**Flags:**
+- **Not deployed.** Same wall as the last change: the Vercel frontend deploy is
+  blocked until Carl connects the Git repository.
+- **A hard-deleted player has no Put back button**, because there is no row left
+  to hang it on. `admin_restore_player` handles that case, but reversing it
+  today means calling the function directly. A removals list on the Settings tab
+  is the follow-up.
+- The purge of the 13 is deliberately left to Carl.
+
+---
+
 ## 2026-09-09 — Force Cancel cancels, and the Back button comes out from under the clock
 
 **Carl asked:** "Also the force cancel for challenges does not seem to be

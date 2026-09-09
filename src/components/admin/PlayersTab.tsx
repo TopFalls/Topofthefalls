@@ -57,11 +57,72 @@ export function PlayersTab() {
   const [addWarning, setAddWarning] = useState('');
   const [activeToggling, setActiveToggling] = useState<string | null>(null);
   const [activeError, setActiveError] = useState('');
+  const [removingId, setRemovingId]     = useState<string | null>(null);
+  const [removeLoading, setRemoveLoading] = useState(false);
+  const [removeError, setRemoveError]   = useState('');
+  const [removeBanner, setRemoveBanner] = useState('');
   const [invitingId, setInvitingId]   = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState('');
   const [inviteBanner, setInviteBanner] = useState('');
+
+  // Open (unreversed) removals, so a removed player can be put back from the
+  // same screen they were removed on.
+  const { data: removalEvents = [] } = useQuery<{ id: string; player_id: string }[]>({
+    queryKey: ['admin-removal-events'],
+    queryFn: async () => unwrapList(await supabase
+      .from('player_removal_events')
+      .select('id, player_id')
+      .is('restored_at', null)),
+  });
+  const removalEventByPlayer = useMemo(
+    () => new Map(removalEvents.map((e) => [e.player_id, e.id])),
+    [removalEvents],
+  );
+
+  const handleRestore = async (eventId: string, name: string) => {
+    setRemoveLoading(true);
+    setRemoveError('');
+    const { error } = await supabase.rpc('admin_restore_player', { p_event_id: eventId });
+    setRemoveLoading(false);
+    if (error) { setRemoveError(error.message); return; }
+    setRemoveBanner(`${name} is back on the list.`);
+    qc.invalidateQueries({ queryKey: ['admin-players'] });
+    qc.invalidateQueries({ queryKey: ['admin-removal-events'] });
+    qc.invalidateQueries({ queryKey: ['rankings'] });
+    qc.invalidateQueries({ queryKey: ['admin-rankings'] });
+    qc.invalidateQueries({ queryKey: ['activity-feed-full'] });
+  };
+
+  // Removing is not deactivating, and the two buttons sit side by side, so the
+  // confirm step spells out which one this is and what it will do.
+  const handleRemove = async (p: Player) => {
+    setRemoveLoading(true);
+    setRemoveError('');
+    const { data, error } = await supabase.rpc('admin_remove_player', { p_player_id: p.id });
+    setRemoveLoading(false);
+    if (error) {
+      setRemoveError(
+        error.code === 'PGRST202' || error.code === '42883'
+          ? 'Removing is not available on this database yet.'
+          : error.message,
+      );
+      return;
+    }
+    const result = (data ?? {}) as { hard_deleted?: boolean };
+    setRemoveBanner(
+      result.hard_deleted
+        ? `${p.full_name} is gone. They had no matches on record, so the name was deleted and the list closed up.`
+        : `${p.full_name} is off the list. Their finished matches were kept so their opponents' records stay correct.`,
+    );
+    setRemovingId(null);
+    qc.invalidateQueries({ queryKey: ['admin-players'] });
+    qc.invalidateQueries({ queryKey: ['rankings'] });
+    qc.invalidateQueries({ queryKey: ['admin-rankings'] });
+    qc.invalidateQueries({ queryKey: ['activity-feed-full'] });
+    qc.invalidateQueries({ queryKey: ['audit-events'] });
+  };
 
   const toggleActive = async (p: Player) => {
     setActiveToggling(p.id);
@@ -195,6 +256,7 @@ export function PlayersTab() {
       {addWarning && <p className="text-[#F59E0B] text-xs font-[Barlow]">{addWarning}</p>}
       {inviteBanner && <p className="text-[#22C55E] text-xs font-[Barlow]">{inviteBanner}</p>}
       {activeError && <p className="text-[#EF4444] text-xs font-[Barlow]">{activeError}</p>}
+      {removeBanner && <p className="text-[#22C55E] text-xs font-[Barlow]">{removeBanner}</p>}
 
       {/* Filter buttons */}
       <div className="flex gap-2">
@@ -227,9 +289,13 @@ export function PlayersTab() {
                     <span className="ml-2 text-[#9CA3AF] font-normal">FR {fr}</span>
                   )}
                 </div>
-                <div className="text-[#6B7280] text-xs font-[Barlow]">{p.profile_id ? 'Claimed' : 'Unclaimed'}</div>
+                <div className="text-[#6B7280] text-xs font-[Barlow]">
+                  {p.removed_at
+                    ? 'Removed from the list — match history kept'
+                    : p.profile_id ? 'Claimed' : 'Unclaimed'}
+                </div>
               </div>
-              {!p.profile_id && !isInviting && (
+              {!p.removed_at && !p.profile_id && !isInviting && (
                 <button
                   onClick={() => { setInvitingId(p.id); setInviteEmail(''); setInviteError(''); setInviteBanner(''); }}
                   className="px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-medium transition-colors bg-[#3B82F6]/20 text-[#3B82F6] border border-[#3B82F6]/30">
@@ -243,11 +309,52 @@ export function PlayersTab() {
                   Stats
                 </button>
               )}
-              <button onClick={() => toggleActive(p)} disabled={activeToggling === p.id}
-                className={`px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${p.is_active ? 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30' : 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30'}`}>
-                {activeToggling === p.id ? 'Saving…' : p.is_active ? 'Deactivate' : 'Activate'}
-              </button>
+              {!p.removed_at && (
+                <button onClick={() => toggleActive(p)} disabled={activeToggling === p.id}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${p.is_active ? 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30' : 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30'}`}>
+                  {activeToggling === p.id ? 'Saving…' : p.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+              )}
+              {!p.removed_at && removingId !== p.id && (
+                <button
+                  onClick={() => { setRemovingId(p.id); setRemoveError(''); setRemoveBanner(''); }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-medium transition-colors bg-[#252525] text-[#9CA3AF] border border-[#444] hover:text-[#EF4444] hover:border-[#EF4444]/40">
+                  Remove
+                </button>
+              )}
+              {p.removed_at && removalEventByPlayer.has(p.id) && (
+                <button
+                  onClick={() => handleRestore(removalEventByPlayer.get(p.id)!, p.full_name)}
+                  disabled={removeLoading}
+                  className="px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-medium transition-colors bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30 disabled:opacity-60">
+                  Put back
+                </button>
+              )}
             </div>
+
+            {removingId === p.id && (
+              <div className="mt-3 p-3 rounded-lg bg-[#EF4444]/8 border border-[#EF4444]/30">
+                <p className="text-[#E8E2D6] text-xs font-[Barlow] font-semibold mb-1">
+                  Take {p.full_name} off the list for good?
+                </p>
+                <p className="text-[#9CA3AF] text-xs font-[Barlow] mb-2">
+                  This is not the same as Deactivate. Deactivate keeps somebody on the list
+                  while they take a break. This takes them off it. If they never played a
+                  match the name is deleted outright and the list closes up; if they have
+                  matches on record those are kept, so their opponents&apos; win-loss records
+                  do not change. Either way you can undo it.
+                </p>
+                {removeError && <p className="text-[#EF4444] text-xs font-[Barlow] mb-2">{removeError}</p>}
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => { setRemovingId(null); setRemoveError(''); }}>
+                    Keep them
+                  </Button>
+                  <Button variant="danger" size="sm" loading={removeLoading} onClick={() => handleRemove(p)}>
+                    Remove from list
+                  </Button>
+                </div>
+              </div>
+            )}
             {isResetting && (
               <div className="mt-3">
                 <StatsResetButtons

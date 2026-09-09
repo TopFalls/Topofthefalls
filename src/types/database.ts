@@ -27,6 +27,16 @@ export interface Database {
           is_active: boolean;
           created_at: string;
           updated_at: string;
+          // These three were already live on the table and missing here --
+          // inactive_since and inactive_drift_periods since the inactive
+          // lifecycle went in, removed_at as of the Remove button. Note that
+          // public_players exposes the first two but NOT removed_at: that view
+          // names its columns explicitly and a removed player holds no rankings
+          // row, so they never reach the ladder to be filtered in the first
+          // place.
+          inactive_since: string | null;
+          inactive_drift_periods: number;
+          removed_at: string | null;
         };
         Insert: Omit<Database['public']['Tables']['players']['Row'], 'created_at' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['players']['Insert']>;

@@ -163,6 +163,9 @@ export function getTopOfTheFallsDemoRankings(): RankedPlayer[] {
         is_active: true,
         created_at: nowIso(),
         updated_at: nowIso(),
+        inactive_since: null,
+        inactive_drift_periods: 0,
+        removed_at: null,
       },
       ranking: {
         id: demoUuid(position + 1000),
