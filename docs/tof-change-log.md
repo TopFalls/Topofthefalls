@@ -67,6 +67,31 @@ connection
 **Gates:** build ✓ · tests 146/146 ✓ · lint clean on changed files ·
 `supabase-migration-reviewer` and `demo-readiness-checker` both run
 
+**Three more caught by `/code-review`, after it had shipped.** All three
+verified in the code before acting, all three real:
+
+- **The success screen was reachable then replaced.** `ChallengePage` checked
+  protection above the "Challenge Sent!" screen. With the open-player rule off,
+  the player you just challenged joins the protected set the moment your
+  challenge lands, so within one 30-second refetch the confirmation would have
+  turned into "they cannot be challenged". The guard now sits below the sent
+  screen, with a comment saying why it must stay there.
+- **The rule-OFF branch shielded lapsed challenges.** It mirrored
+  `create-challenge`'s check exactly -- status only -- which is faithful to the
+  line it copied but misses what runs immediately before it: the server calls
+  `expire_stale_challenges()` first. The client cannot, and the cron is hourly,
+  so for up to an hour the ladder would have hidden the button for somebody the
+  server would happily let you challenge. That is a refusal invented on the
+  client, the opposite of failing open. `20260910074500` applies the sweep's own
+  predicate as a filter. Latent rather than live -- the rule is ON -- but the
+  switch exists to be thrown.
+- **The "Can Challenge" tab still listed protected players.** Keeping them
+  visible with a badge was a deliberate choice on the full list, and the wrong
+  one under a tab whose label promises otherwise. The filter routes through
+  protection now; the explanation still lives on All Players.
+
+**Gates after the fixes:** build ✓ · tests 147/147 ✓ · lint clean.
+
 **What the migration review caught.** The first cut defaulted an empty
 `league_settings` to the rule being ON, while `create-challenge` reads a missing
 row as OFF and calls that the safe direction. The two would have disagreed about
