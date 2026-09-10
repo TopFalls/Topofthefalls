@@ -19,6 +19,67 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-09-10 — The ladder loop: a reversed forfeit no longer comes back an hour later
+
+**Carl asked:** "Yesterday a player at 98th position challenged the 97th position
+and they kept score in the app and when the 98 position one won it moved them up
+two spots instead of just one to 97. That is an incorrect move and they should
+have just swapped spots, advancing the winner one position because they only
+challenged one position ahead of them."
+
+**The swap was never the problem.** `cascade_ranking_after_win` is a clean
+exchange and was doing exactly that. The extra spot came from a second event
+nobody asked for, in a loop between the hourly sweep and the admin undo button:
+
+1. `expire_stale_challenges()` forfeits every challenge that is `pending` with
+   `expires_at` in the past, and a forfeit swaps the challenger up the ladder.
+2. An admin judges one of those wrong and hits **Reverse Decline**.
+3. The reversal restores `status = 'pending'` and leaves `expires_at` alone —
+   necessarily still in the past, because expiring is how the challenge reached a
+   forfeit in the first place.
+4. That is the sweep's exact predicate. The next hourly run forfeits it again.
+
+So a player who won a match legitimately (one spot, correct) could also collect a
+spot from a stale challenge of their own being force-forfeited underneath them.
+
+**Read off the live database before a line was written:** 39
+`challenge_decline_forfeit_applied` and 24 `challenge_decline_forfeit_reversed`
+inside three days; Ron DeWitt/Wade Thompson, Dean Mueller/Kelly Gilligan and
+Bryan Vaden/Carp Mazing each forfeited **three separate times**; all 16 affected
+challenges past expiry, the earliest since 2026-09-05; and five manual
+`rankings.admin_reorder` passes by Mike cleaning up after it.
+
+**Shipped:** reversing a forfeit now gives the challenge a real response window
+again — `now() + challenge_response_hours` (48) — but only when the old one had
+already lapsed. A challenge still inside its window keeps its original deadline,
+so an admin touching a live challenge cannot hand it a second full window. That
+makes Reverse Decline mean what the admin intends: this challenge still stands,
+and the challenged player has actual time to answer.
+
+**How it was built matters.** The function is 220 lines of live, load-bearing
+code. Rather than retype it, the deployed definition was extracted
+programmatically from `20260814121000_ladder_swap_on_win.sql` and exactly one
+statement replaced. Verified against `pg_proc.prosrc` first that the deployed
+function contained the old statement verbatim and mentioned `expires_at`
+nowhere at all.
+
+**Files:** `supabase/migrations/20260910190000_reversed_forfeit_gets_a_real_window.sql`,
+`test/forfeit-reversal.test.mjs`
+**Gates:** build ✓ · tests 152/152 ✓ (five new, pinning the loop shut) ·
+`supabase-migration-reviewer` run
+
+**Flags:**
+- **Dormant, not dead, until this lands.** Zero pending challenges are currently
+  past expiry, so nothing is queued to fire and the ladder is stable as Mike left
+  it. It re-arms the moment anyone reverses a forfeit, so Mike should hold off on
+  Reverse Decline until this is applied.
+- The positions Carl quoted were an example, not the actual pairing — he said so
+  when asked. The systemic evidence above is what the diagnosis rests on.
+- Not from Carl's original list. This surfaced separately and is the most
+  damaging of anything reported so far, because it silently rewrites the ladder.
+
+---
+
 ## 2026-09-10 — The ladder stops offering a Challenge button that cannot work
 
 **Chase asked** for this one, off the open-items list rather than from Carl: the
