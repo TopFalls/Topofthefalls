@@ -58,7 +58,12 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(authHeader?.replace('Bearer ', ''));
     if (authErr || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
 
-    const { challenged_player_id, discipline, race_length } = await req.json();
+    // `preview` runs every guard below and then stops before the first write,
+    // so the challenge screen can tell a player what issuing this challenge
+    // would cost them. See the preview return further down for why it is done
+    // this way rather than in SQL.
+    const { challenged_player_id, discipline, race_length, preview } = await req.json();
+    const isPreview = preview === true;
 
     const { data: settings } = await supabase
       .from('league_settings')
@@ -250,6 +255,43 @@ serve(async (req) => {
       }
 
       challengerKeepsProtection = !(engaged.has(challenged_player_id) && openPlayerAvailable);
+    }
+
+    // ---- Preview stops here, one line before the first write ---------------
+    //
+    // A challenger who goes after somebody already tied up, while an open
+    // player sat in their range, gives up their own protection: anyone below
+    // them may challenge them while they wait. That is a real cost and the app
+    // used to charge it silently -- the number came back in this function's
+    // response, after the challenge had already been issued.
+    //
+    // Why this is not a SQL function like protected_player_ids(). That one
+    // could move, because it reads only `challenges` and `league_settings`,
+    // which every signed-in player can already read. This question cannot:
+    // it needs `matches`, whose RLS is participant-only, and it needs the
+    // challenger's active rank and range. engaged_player_ids() was locked to
+    // the service role in 20260817144000 for exactly that reason, and the
+    // range rules already exist in two places (src/lib/ladder.ts and the
+    // canChallenge above). A third copy in SQL is how this app's rules have
+    // drifted before.
+    //
+    // So the preview is not a second implementation at all. It is this
+    // function, run to the same point by the same guards, stopped before it
+    // writes. The warning cannot disagree with the outcome, because it IS the
+    // outcome.
+    //
+    // Not perfectly read-only: expire_stale_challenges() ran further up. That
+    // is deliberate -- it is idempotent housekeeping that also runs hourly on
+    // cron, and skipping it would have the preview read a staler board than
+    // the send would.
+    if (isPreview) {
+      return new Response(JSON.stringify({
+        preview: true,
+        challenger_protected: challengerKeepsProtection,
+        protection_warning: challengerKeepsProtection
+          ? null
+          : 'They are already tied up in a challenge, and someone else in your range is free right now. Challenge them anyway and you give up your own protection: while you wait to play, anyone below you can challenge you.',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const expiresAt = new Date(Date.now() + responseHours * 3600 * 1000).toISOString();

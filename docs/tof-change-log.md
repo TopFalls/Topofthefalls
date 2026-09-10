@@ -77,6 +77,64 @@ nowhere at all.
   when asked. The systemic evidence above is what the diagnosis rests on.
 - Not from Carl's original list. This surfaced separately and is the most
   damaging of anything reported so far, because it silently rewrites the ladder.
+## 2026-09-10 — A player is told what a challenge will cost before they send it
+
+**Chase asked** for this, off the open-items list rather than from Carl. It is
+the other half of the protection rule, and the half that was left flagged when
+the first half shipped this morning.
+
+**Shipped:** Under the open-player rule, going after somebody already tied up in
+a match while an open player sat in your range gives up your own protection --
+anyone below you may challenge you while you wait. The app charged that
+silently. The number came back in the response, after the challenge had already
+been issued, and nothing ever showed it to the player. The confirm step now says
+so before they send, in plain terms: they are already tied up, someone else in
+your range is free, challenge them anyway and anyone below you can come after
+you while you wait.
+
+It warns; it does not block. Taking that trade is a legitimate move -- you might
+want that particular match -- and the point is that it should be a choice rather
+than a surprise.
+
+**How, and why not the way the first half was built.** This morning's half moved
+its predicate into SQL so the ladder could ask it directly. That worked because
+it reads only `challenges` and `league_settings`, which every signed-in player
+can already read. This question cannot move: it needs `matches`, whose RLS is
+participant-only, and it needs the challenger's own active rank and range.
+`engaged_player_ids()` was deliberately locked to the service role in
+`20260817144000` for exactly that reason, and the range rules already exist in
+two places. A third copy in SQL is how this app's rules have drifted before.
+
+So there is no second implementation. `create-challenge` gained a preview mode:
+the same function, run to the same decision by the same guards, stopped one line
+before the first write, reporting the very variable the insert would have
+written. The warning cannot disagree with what Send does, because it is what
+Send decided.
+
+**Files:** `supabase/functions/create-challenge/index.ts`,
+`src/pages/ChallengePage.tsx`
+**Commit:** see below · **Deploy:** edge function redeployed and verified;
+frontend ships on merge
+**Gates:** build ✓ · tests 150/150 ✓ · lint clean on changed files ·
+`demo-readiness-checker` run
+
+**Flags:**
+- **The preview is not perfectly read-only.** `expire_stale_challenges()` runs
+  earlier in the function and is a write. Kept deliberately: it is idempotent
+  housekeeping that also runs hourly on cron, and skipping it would have the
+  preview read a staler board than the send would. The test suite pins the
+  preview's return above every other write.
+- **What the preview tells a player, and why that is not a leak.** A "you would
+  lose it" answer reveals that the target is engaged. That is not new: every
+  challenge row is readable by the whole league, every match hangs off a
+  challenge whose status tracks it, and issuing the challenge returns the same
+  answer anyway. The one real difference is rate: sending is capped at two a
+  week, previewing is not. The probe space is the one or two players directly
+  above you, whose challenge status is already public, so the exposure is
+  nil in practice. Recorded as reasoning rather than proof.
+- Still true, and still worth knowing: nobody in live play has ever lost
+  protection. Every live challenge carries `challenger_protected = true`. This
+  warning may go a long time without firing, which is the good outcome.
 
 ---
 
