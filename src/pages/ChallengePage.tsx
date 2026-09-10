@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, CheckCircle, Swords, Minus, Plus } from 'lucide-react';
@@ -36,6 +36,31 @@ export default function ChallengePage() {
   const [sending, setSending]       = useState(false);
   const [sent, setSent]             = useState(false);
   const [error, setError]           = useState('');
+  const [protectionWarning, setProtectionWarning] = useState<string | null>(null);
+
+  // What will this challenge cost me?
+  //
+  // Going after somebody already tied up, while an open player sits in your
+  // range, gives up your own protection -- anyone below you may challenge you
+  // while you wait. The app used to charge that silently. This asks before the
+  // player commits, on the confirm step, where the decision is actually made.
+  //
+  // The answer comes from create-challenge in preview mode: the same function,
+  // run to the same decision by the same guards, stopped before it writes. So
+  // the warning cannot disagree with what Send actually does.
+  useEffect(() => {
+    if (step !== 3 || !id || !discipline) return;
+    let cancelled = false;
+    callEdgeFunction<{ protection_warning: string | null }>('create-challenge', {
+      challenged_player_id: id, discipline, race_length: race, preview: true,
+    })
+      .then((res) => { if (!cancelled) setProtectionWarning(res.protection_warning ?? null); })
+      // A failed preview must never stop somebody challenging. Send does the
+      // real check and reports for itself, so the worst case here is the old
+      // behaviour: no warning.
+      .catch(() => { if (!cancelled) setProtectionWarning(null); });
+    return () => { cancelled = true; };
+  }, [step, id, discipline, race]);
 
   // Rankings still loading (or the player id is bad) — never render a blank page.
   if (!target) {
@@ -285,6 +310,16 @@ export default function ChallengePage() {
                 💰 <strong>Match Fee: ${LEAGUE.matchFeePerPlayer} per player.</strong> Use the envelope at the venue or pay digitally — you'll select your method when submitting the result.
               </div>
             </GlassCard>
+
+            {/* What this challenge costs. The sentence is the server's, the
+                same one create-challenge decided on; only the heading is ours. */}
+            {protectionWarning && (
+              <GlassCard className="p-4 border border-[#F59E0B]/30">
+                <div className="text-[#F59E0B] text-sm font-[Barlow] leading-relaxed">
+                  ⚠️ <strong>You would give up your protection.</strong> {protectionWarning}
+                </div>
+              </GlassCard>
+            )}
 
             {error && (
               <div className="text-[#EF4444] text-sm font-[Barlow] text-center p-3 bg-[#EF4444]/10 rounded-lg border border-[#EF4444]/20">

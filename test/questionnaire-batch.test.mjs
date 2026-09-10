@@ -29,6 +29,7 @@ const protectedIds = sqlOnly(readMigration('protection_expiry_guard'));
 
 const createChallenge = read('supabase/functions/create-challenge/index.ts');
 const protectionHook  = read('src/hooks/useProtectedPlayers.ts');
+const challengePage   = read('src/pages/ChallengePage.tsx');
 const submitResult    = read('supabase/functions/submit-result/index.ts');
 const layout          = read('src/components/Layout.tsx');
 const dbTypes         = read('src/types/database.ts');
@@ -173,6 +174,32 @@ test('the ladder and the server ask the same question', () => {
   assert.match(protectionHook, /rpc\('protected_player_ids'\)/);
   // The refusal wording comes back with the answer rather than being retyped.
   assert.match(createChallenge, /error: shield\.detail/);
+});
+
+test('the preview stops before the first write', () => {
+  // The whole safety property. Preview runs every guard and then returns; if
+  // it ever fell below the insert it would create the challenge it was asked
+  // to describe.
+  const previewReturn = createChallenge.indexOf('if (isPreview)');
+  const firstInsert = createChallenge.indexOf(".from('challenges').insert(");
+  assert.ok(previewReturn > -1, 'preview must return somewhere');
+  assert.ok(firstInsert > -1, 'the insert must still exist');
+  assert.ok(previewReturn < firstInsert, 'preview must return before the challenge is inserted');
+});
+
+test('the preview is the same decision the send makes, not a second copy', () => {
+  // It reports the very variable the insert goes on to write, so a warning
+  // that says "you keep it" cannot be followed by a row that says otherwise.
+  assert.match(createChallenge, /preview: true,[\s\S]*?challenger_protected: challengerKeepsProtection/);
+  assert.match(createChallenge, /challengeRow\.challenger_protected = challengerKeepsProtection/);
+});
+
+test('the challenge screen shows the cost and fails open without it', () => {
+  // The sentence is the server's, so it cannot drift from the rule.
+  assert.match(challengePage, /preview: true/);
+  assert.match(challengePage, /protection_warning/);
+  // A failed preview must never stop somebody challenging.
+  assert.match(challengePage, /\.catch\(\(\) => \{ if \(!cancelled\) setProtectionWarning\(null\); \}\)/);
 });
 
 test('signed-out visitors are kept out of the protection lookup', () => {
