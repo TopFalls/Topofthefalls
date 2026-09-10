@@ -184,70 +184,57 @@ serve(async (req) => {
     //
     // If the column is missing entirely the select fails and the rule stays
     // off, which is the safe direction to fail in.
-    const ACTIVE_CHALLENGE = ['pending', 'accepted', 'scheduled', 'in_progress'];
-
     const { data: ruleRow } = await supabase.from('league_settings').select('open_player_rule').limit(1).maybeSingle();
     const openPlayerRule = ruleRow?.open_player_rule === true;
 
+    // Is the player being challenged shielded right now?
+    //
+    // Both readings of the rule answer that, in different ways - with the
+    // open-player rule on, a challenger who did not skip anybody is protected;
+    // with it off, nobody may be challenged twice at once. Both now live in
+    // protected_player_ids(), so this asks once and reads the refusal straight
+    // back instead of keeping a second copy of either predicate here.
+    //
+    // The ladder asks that same function before it draws a Challenge button.
+    // That is the point of moving it: a player should not be able to reach
+    // this refusal by tapping a button the app offered them.
+    //
+    // Fail CLOSED, as every guard here does - a failed read must never read as
+    // a clear board.
+    const { data: shieldRows, error: shieldError } = await supabase.rpc('protected_player_ids');
+    if (shieldError) {
+      console.error('[create-challenge protection]', shieldError);
+      return new Response(JSON.stringify({ error: 'Could not work out who is free to be challenged right now. Please try again.' }), { status: 503, headers: corsHeaders });
+    }
+    const shield = ((shieldRows ?? []) as { player_id: string; detail: string }[])
+      .find((r) => r.player_id === challenged_player_id);
+    if (shield) return new Response(JSON.stringify({ error: shield.detail }), { status: 409, headers: corsHeaders });
+
     let challengerKeepsProtection = true;
 
-    if (!openPlayerRule) {
-      // limit(1), not a bare maybeSingle(): if this rule is switched off while
-      // several incoming challenges are already live, maybeSingle() errors on
-      // the extra rows and returns data:null, which would read as "nobody is
-      // challenging them" and wave the new challenge through.
-      const { data: existingIn, error: existingInError } = await supabase.from('challenges').select('id').eq('challenged_id', challenged_player_id).in('status', ACTIVE_CHALLENGE).limit(1).maybeSingle();
-      if (existingInError) return new Response(JSON.stringify({ error: 'Could not check that player. Please try again.' }), { status: 503, headers: corsHeaders });
-      if (existingIn) return new Response(JSON.stringify({ error: 'That player already has an active challenge they must resolve first.' }), { status: 409, headers: corsHeaders });
-    } else {
+    if (openPlayerRule) {
+      // Whether the CHALLENGER keeps their own protection is a different
+      // question from whether the target has any, and it stays here: it
+      // depends on this challenger's range, which the database does not know.
+      // Only the "who is shielded" half moved out to protected_player_ids().
+      //
       // "Engaged" comes from engaged_player_ids() in the database, not from a
       // second copy of the status lists here. Two copies is precisely how this
       // repo has drifted before, and the migration that defines that function
       // promises it is the single definition — so use it.
-      const [engagedRes, liveChallengesRes] = await Promise.all([
-        supabase.rpc('engaged_player_ids'),
-        supabase.from('challenges').select('challenger_id, challenger_protected, expires_at, match_deadline').in('status', ACTIVE_CHALLENGE),
-      ]);
+      const engagedRes = await supabase.rpc('engaged_player_ids');
 
-      // Fail CLOSED. Every guard below is a "nobody is in the way" test, so a
+      // Fail CLOSED. The scan below is a "nobody else was free" test, so a
       // failed read would otherwise read as a clear board and hand out
       // protection that was never earned.
-      if (engagedRes.error || liveChallengesRes.error) {
-        console.error('[create-challenge open-player]', engagedRes.error ?? liveChallengesRes.error);
+      if (engagedRes.error) {
+        console.error('[create-challenge open-player]', engagedRes.error);
         return new Response(JSON.stringify({ error: 'Could not work out who is free to be challenged right now. Please try again.' }), { status: 503, headers: corsHeaders });
       }
 
       const engaged = new Set(
         ((engagedRes.data ?? []) as { player_id: string }[]).map((r) => r.player_id),
       );
-
-      const liveChallenges = (liveChallengesRes.data ?? []) as {
-        challenger_id: string; challenger_protected: boolean | null;
-        expires_at: string | null; match_deadline: string | null;
-      }[];
-
-      // Protection belongs to the player who ISSUED a challenge and did not
-      // skip anyone to do it. The player they challenged stays challengeable -
-      // that is what lets somebody go after the winner or the loser of a match
-      // that is already arranged.
-      //
-      // It also has to run out. Only 'pending' challenges are ever expired, so
-      // a challenge that was accepted and then never played would otherwise
-      // protect its challenger forever and freeze everyone below them. Once
-      // the 10-day deadline to actually play has passed, the shield is gone.
-      const nowMs = Date.now();
-      const stillInTime = (c: { expires_at: string | null; match_deadline: string | null }) => {
-        const until = c.match_deadline ?? c.expires_at;
-        return until === null || Date.parse(until) > nowMs;
-      };
-      const protectedPlayers = new Set(
-        liveChallenges
-          .filter((c) => c.challenger_protected !== false && stillInTime(c))
-          .map((c) => c.challenger_id),
-      );
-      if (protectedPlayers.has(challenged_player_id)) {
-        return new Response(JSON.stringify({ error: 'That player has a challenge of their own running, and they took the open player when they made it. They are protected until it is played.' }), { status: 409, headers: corsHeaders });
-      }
 
       // An "open player" is active, inside my range, and not already tied up.
       // A cooldown does NOT take somebody out of this pool: cooldowns stop you

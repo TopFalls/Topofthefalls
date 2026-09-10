@@ -22,8 +22,10 @@ const sqlOnly = (text) =>
 const jobs        = sqlOnly(readMigration('scheduled_jobs_and_match_day_reminders'));
 const announce    = sqlOnly(readMigration('league_announcements'));
 const openPlayer  = sqlOnly(readMigration('open_player_protection'));
+const protectedIds = sqlOnly(readMigration('protected_player_ids'));
 
 const createChallenge = read('supabase/functions/create-challenge/index.ts');
+const protectionHook  = read('src/hooks/useProtectedPlayers.ts');
 const submitResult    = read('supabase/functions/submit-result/index.ts');
 const layout          = read('src/components/Layout.tsx');
 const dbTypes         = read('src/types/database.ts');
@@ -104,28 +106,66 @@ test('the open-player rule is switchable and fails off', () => {
   assert.match(openPlayer, /ADD COLUMN IF NOT EXISTS open_player_rule boolean NOT NULL DEFAULT true/);
 });
 
+// These three used to assert against create-challenge, which worked the
+// predicate out inline. It moved into protected_player_ids() so the challenge
+// screen could ask the same question before drawing a button, and the rule is
+// pinned at its new home. The behaviour asserted has not changed.
+
 test('protection belongs to the challenger, never to the player challenged', () => {
   // B5 is "Many": the player you challenge stays challengeable, which is what
-  // lets somebody go after the winner or the loser of an arranged match.
-  assert.match(createChallenge, /\.map\(\(c\) => c\.challenger_id\)/);
-  assert.doesNotMatch(createChallenge, /\.map\(\(c\) => c\.challenged_id\)/);
-  assert.match(createChallenge, /c\.challenger_protected !== false/);
+  // lets somebody go after the winner or the loser of an arranged match. Only
+  // the rule-OFF reading — one incoming challenge at a time — looks at the
+  // challenged player, and only while the rule is off.
+  assert.match(protectedIds, /c\.challenger_id AS player_id[\s\S]*?WHERE rule\.open_player_rule/);
+  assert.match(protectedIds, /c\.challenged_id AS player_id[\s\S]*?WHERE NOT rule\.open_player_rule/);
+  assert.match(protectedIds, /c\.challenger_protected IS DISTINCT FROM false/);
+  // create-challenge still WRITES the column — deciding whether a new
+  // challenger keeps their own shield needs their range, which the database
+  // does not know — but it no longer keeps a second copy of the read.
+  assert.match(createChallenge, /challengeRow\.challenger_protected = challengerKeepsProtection/);
+  assert.doesNotMatch(createChallenge, /challenger_protected !== false/);
 });
 
 test('protection runs out when the deadline to actually play does', () => {
   // Only 'pending' challenges are ever expired, so an accepted-but-never-played
   // challenge would otherwise shield its challenger forever and freeze everyone
-  // below them on the list.
-  assert.match(createChallenge, /const stillInTime =/);
-  assert.match(createChallenge, /c\.match_deadline \?\? c\.expires_at/);
-  assert.match(createChallenge, /&& stillInTime\(c\)/);
+  // below them on the list. match_deadline is read BEFORE expires_at: an
+  // accepted challenge already has expires_at in the past, so the other order
+  // would strip the shield off every scheduled match on the board.
+  assert.match(protectedIds, /COALESCE\(c\.match_deadline, c\.expires_at\) IS NULL/);
+  assert.match(protectedIds, /COALESCE\(c\.match_deadline, c\.expires_at\) > now\(\)/);
+});
+
+test('the rule reading fails the same way on both sides', () => {
+  // create-challenge reads a missing settings row as the rule being OFF and
+  // calls that the safe direction. The function has to agree, or the two would
+  // disagree about who is protected at the worst possible moment.
+  assert.match(protectedIds, /COALESCE\(\(SELECT s\.open_player_rule FROM public\.league_settings s LIMIT 1\), false\)/);
+  assert.match(createChallenge, /openPlayerRule = ruleRow\?\.open_player_rule === true/);
 });
 
 test('a failed read refuses the challenge instead of handing out protection', () => {
   // Every guard in this block is a "nobody is in the way" test, so failing open
   // would read as a clear board and grant protection nobody earned.
-  assert.match(createChallenge, /if \(engagedRes\.error \|\| liveChallengesRes\.error\)/);
-  assert.match(createChallenge, /status: 503/);
+  assert.match(createChallenge, /if \(shieldError\)[\s\S]*?status: 503/);
+  assert.match(createChallenge, /if \(engagedRes\.error\)[\s\S]*?status: 503/);
+});
+
+test('the ladder and the server ask the same question', () => {
+  // The whole point of moving the predicate: a player must not be able to reach
+  // the refusal by tapping a button the app offered them.
+  assert.match(createChallenge, /rpc\('protected_player_ids'\)/);
+  assert.match(protectionHook, /rpc\('protected_player_ids'\)/);
+  // The refusal wording comes back with the answer rather than being retyped.
+  assert.match(createChallenge, /error: shield\.detail/);
+});
+
+test('signed-out visitors are kept out of the protection lookup', () => {
+  // The guest surface is six views and nothing else, and a guest cannot
+  // challenge anybody.
+  assert.match(protectedIds, /REVOKE ALL ON FUNCTION public\.protected_player_ids\(\) FROM PUBLIC, anon/);
+  assert.match(protectedIds, /GRANT EXECUTE ON FUNCTION public\.protected_player_ids\(\) TO authenticated, service_role/);
+  assert.doesNotMatch(protectedIds, /SECURITY DEFINER/);
 });
 
 test('skipping an open player is what costs you protection', () => {

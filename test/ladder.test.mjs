@@ -6,6 +6,7 @@ import {
   activeRankByPosition,
   challengeEligibilityOnLadder,
   canChallengeOnLadder,
+  challengeEligibilityWithProtection,
 } from '../src/lib/ladder.ts';
 
 /** A ladder of `size` positions where `inactive` positions are stood down. */
@@ -113,4 +114,39 @@ test('an all-active ladder behaves exactly as before', () => {
   for (const [my, their] of [[4, 2], [10, 8], [11, 8], [12, 9], [20, 17], [3, 7]]) {
     assert.equal(canChallengeOnLadder(my, their, ranks), canChallenge(my, their));
   }
+});
+
+// ─── Protection ──────────────────────────────────────────────────────────────
+//
+// Who is protected is decided in the database by protected_player_ids(); these
+// only cover which of the two answers a player is shown.
+
+const PROTECTED = { label: 'Protected', detail: 'They are protected until it is played.' };
+
+test('an opponent in range but protected is blocked, and says so', () => {
+  const result = challengeEligibilityWithProtection(challengeEligibility(12, 11), PROTECTED);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'Protected');
+});
+
+test('protection does not override a positional reason', () => {
+  // Out of range matters more: it is the more basic fact, and it does not
+  // change when somebody else's challenge is played.
+  const result = challengeEligibilityWithProtection(challengeEligibility(12, 5), PROTECTED);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'Out of range — two spots up max');
+});
+
+test('an unprotected opponent in range is still challengeable', () => {
+  for (const protection of [null, undefined]) {
+    const result = challengeEligibilityWithProtection(challengeEligibility(12, 11), protection);
+    assert.equal(result.ok, true, `protection ${String(protection)} must not block`);
+  }
+});
+
+test('protection cannot rescue an opponent you could never challenge', () => {
+  // Guards the fail-open direction: if the map is empty because the lookup
+  // failed, nothing about the positional rules may loosen.
+  assert.equal(challengeEligibilityWithProtection(challengeEligibility(5, 5), null).reason, 'This is you');
+  assert.equal(challengeEligibilityWithProtection(challengeEligibility(3, 7), null).reason, 'Ranked below you');
 });

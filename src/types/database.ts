@@ -447,6 +447,21 @@ export type PublicActivityFeedItem = Database['public']['Views']['public_activit
 export type LeagueSettings = Database['public']['Tables']['league_settings']['Row'];
 export type AuditEvent = Database['public']['Tables']['audit_events']['Row'];
 
+/**
+ * A row from the `protected_player_ids()` function — a player who cannot be
+ * challenged right now, and why.
+ *
+ * `label` is the short badge the ladder shows next to a player; `detail` is the
+ * full sentence, and it is the same text create-challenge returns when it
+ * refuses. Both come from the database so the rule and the words a player reads
+ * have one source. See `20260910071500_protected_player_ids.sql`.
+ */
+export interface PlayerProtection {
+  player_id: string;
+  label: string;
+  detail: string;
+}
+
 // Composite types used across the app
 export interface RankedPlayer {
   player: Player;

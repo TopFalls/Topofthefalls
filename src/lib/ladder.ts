@@ -83,3 +83,30 @@ export function canChallengeOnLadder(
 ): boolean {
   return challengeEligibilityOnLadder(myPos, theirPos, activeRanks).ok;
 }
+
+// ─── Protection ──────────────────────────────────────────────────────────────
+//
+// Positional rules say whether an opponent is in your range. They say nothing
+// about whether that opponent is currently shielded by a challenge of their
+// own — that depends on live rows, and it is worked out once in the database by
+// protected_player_ids() rather than a second time here. See
+// src/hooks/useProtectedPlayers.ts.
+//
+// This function only decides which of the two answers a player should be shown.
+
+/**
+ * Fold protection into positional eligibility.
+ *
+ * An opponent who is out of range keeps that as their reason: it is the more
+ * basic fact, it does not change when someone else's challenge is played, and
+ * "Out of range" is more use to the player than "Protected" would be. Only an
+ * opponent you could otherwise have challenged is reported as protected.
+ */
+export function challengeEligibilityWithProtection(
+  positional: Eligibility,
+  protection: { label: string } | null | undefined,
+): Eligibility {
+  if (!positional.ok) return positional;
+  if (!protection) return positional;
+  return { ok: false, reason: protection.label };
+}
