@@ -189,16 +189,25 @@ instead costs nothing and needs no seat at all: the deploy is triggered by the
 webhook and attributed to the team, so whoever pushes needs no Vercel account.
 Carl owns the team and can do it himself.
 
-**The Claude GitHub App is not installed on `TopFalls` either.** `git push`
-over HTTPS returns 403 "Claude doesn't have GitHub access to
-TopFalls/Topofthefalls", and GitHub MCP *writes* (create PR) return 403
-"Resource not accessible by integration". MCP **reads** work fine, which is
-misleading — being able to list branches says nothing about being able to push.
-Until Carl installs it at
-https://github.com/apps/claude/installations/select_target, work has to leave
-this session as a `git format-patch` file for Chase to `git am` locally. That
-round trip is slow and error-prone; it is worth asking for the install every
-time it comes up.
+**GitHub write access — fixed 2026-09-10.** This section previously said the
+Claude GitHub App was not installed on `TopFalls`, and that work therefore had
+to leave the session as a `git format-patch` file for Chase to `git am`
+locally. That was true on 2026-09-09: `git push` over HTTPS returned 403
+"Claude doesn't have GitHub access to TopFalls/Topofthefalls" and GitHub MCP
+*writes* returned 403 "Resource not accessible by integration", while MCP
+**reads** kept working — which is misleading, because being able to list
+branches says nothing about being able to push.
+
+It works now. On 2026-09-10 the same session pushed a branch and opened
+[PR #1](https://github.com/TopFalls/Topofthefalls/pull/1) through GitHub MCP,
+both first try. What changed is not recorded here; the observable fact is that
+pushes and PR creation succeed. **Do not fall back to the patch round trip
+without trying the push first.** If a 403 ever comes back, the install lives at
+https://github.com/apps/claude/installations/select_target and is Carl's to do.
+
+Note that a remote-tracking ref for a branch can exist locally without the
+branch existing on GitHub — `git ls-remote --heads origin` is the check that
+does not lie.
 
 **After a frontend deploy, verify by following the real asset hash.** Fetch the
 live `index.html`, read the `/assets/index-*.js` it names, fetch that and grep
