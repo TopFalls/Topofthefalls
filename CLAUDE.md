@@ -130,14 +130,27 @@ This is a **Vite + React SPA** (`npm run build` → `tsc -b && vite build`, outp
 
 ## How this deploys — three separate surfaces
 
-`git push` on its own ships **nothing**. The Vercel project has no Git
-repository connected (see the note below on who can attach it), and edge
-functions and migrations never went through Git in the first place. Each
-surface is published on its own:
+**Correction, 2026-09-10: the Git repository is connected now, so a push to
+`main` does ship the frontend.** This section used to open "`git push` on its
+own ships **nothing**", and that is no longer true of the frontend. Verified
+directly: opening
+[PR #1](https://github.com/TopFalls/Topofthefalls/pull/1) made `vercel[bot]`
+comment on it and build a preview for project `topofthefalls` under team
+`tof2` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`, `team_TiDDLGgPBC8TlMQKmrNcFNl8`),
+and pushing a second commit built it again. Both reached Ready. Production is
+the same connection with `main` as the production branch, and it matches what
+happened on 2026-09-09: `f316175` landed on `main` at 20:00 UTC and the live
+bundle had rolled to a new hash by 20:14, with no session running a deploy.
 
-```bash
-npx vercel --prod --yes --scope tof2
-```
+**A PR preview URL is not something to send Carl.** The connection builds one
+per branch (`topofthefalls-git-<branch>-tof2.vercel.app`), but it sits behind
+Vercel's deployment protection — fetched signed-out on 2026-09-10 it returns
+Vercel's own "Login – Vercel" page, not the app. Only someone signed in to the
+`tof2` team sees it. For Carl, merge to `main` and give him
+`topofthefalls.online`.
+
+Edge functions and migrations still do **not** go through Git. They are
+published on their own:
 
 ```bash
 npx supabase functions deploy <name> --project-ref dpbgdisezxlttwrxqanu
@@ -146,11 +159,21 @@ npx supabase functions deploy <name> --project-ref dpbgdisezxlttwrxqanu
 Migrations are applied straight to the project — the Supabase MCP
 `apply_migration`, or the dashboard SQL editor.
 
-`--scope tof2` and `--project-ref` are not optional. Without the scope the
-Vercel CLI fails "Not authorized"; without the ref the Supabase CLI can reach
-two sibling leagues' projects that are also on this account.
+`--project-ref` is not optional. Without it the Supabase CLI can reach two
+sibling leagues' projects that are also on this account.
 
-### Who can connect the Git repository
+The Vercel CLI route (`npx vercel --prod --yes --scope tof2`) is still written
+down because it is the fallback if the Git connection is ever removed, but
+nobody here can currently run it: `cdalin1985` is not a member of `tof2`, and
+the Vercel MCP token still returns 403 on that scope — re-checked 2026-09-10.
+Push to `main` instead.
+
+### Who can connect the Git repository — done
+
+**Carl connected it.** The steps and the reasoning below are kept as the record
+of why it was the right ask, not as an outstanding one. What is still live in
+this section is the boundary rule and the fact that `cdalin1985` cannot deploy
+by CLI.
 
 `TopFalls` is a **personal GitHub account, not an organisation** — verified
 2026-09-02 (`owner_type: User`; `/orgs/TopFalls` 404s). Earlier notes in this
