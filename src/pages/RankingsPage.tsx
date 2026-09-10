@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, X, Swords } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRankings } from '../hooks/useRankings';
+import { useProtectedPlayers } from '../hooks/useProtectedPlayers';
 import { useAuthStore } from '../stores/authStore';
 import { Avatar } from '../components/Avatar';
 import { GuestBar } from '../components/GuestBar';
@@ -11,19 +12,25 @@ import { Badge } from '../components/Badge';
 import { RankingRowSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { QueryError } from '../components/QueryError';
-import type { RankedPlayer } from '../types/database';
+import type { RankedPlayer, PlayerProtection } from '../types/database';
 import {
   activeRankByPosition,
   challengeEligibilityOnLadder,
+  challengeEligibilityWithProtection,
   canChallengeOnLadder,
   type Eligibility,
 } from '../lib/ladder';
+
+// Shared empty map for the first render, before the protection query resolves.
+// A fresh `new Map()` in the render body would be a new identity every pass.
+const NO_PROTECTION: Map<string, PlayerProtection> = new Map();
 
 function RankCard({
   rp,
   myPosition,
   myPlayerId,
   activeRanks,
+  protectedPlayers,
   index,
   challengeMode,
   isGuest,
@@ -32,6 +39,7 @@ function RankCard({
   myPosition: number | null;
   myPlayerId: string | null;
   activeRanks: Map<number, number>;
+  protectedPlayers: Map<string, PlayerProtection>;
   index: number;
   challengeMode: boolean;
   isGuest: boolean;
@@ -41,12 +49,20 @@ function RankCard({
   const isMe      = rp.player.id === myPlayerId;
   const isInactive = !rp.player.is_active;
   const isTop3    = pos <= 3 && !isInactive;
-  const eligibility: Eligibility = myPosition !== null
+  const positional: Eligibility = myPosition !== null
     ? challengeEligibilityOnLadder(myPosition, pos, activeRanks)
     : { ok: false };
+  // A player shielded by a challenge of their own is refused by the server, so
+  // the button must not be offered. See src/hooks/useProtectedPlayers.ts.
+  const protection = protectedPlayers.get(rp.player.id) ?? null;
+  const eligibility = challengeEligibilityWithProtection(positional, protection);
   const eligible  = eligibility.ok && !isMe;
-  // In challenge mode, explain why ineligible opponents can't be challenged.
-  const showReason = challengeMode && myPosition !== null && !isMe && !eligible;
+  // Protection is worth saying out loud wherever the Challenge button would
+  // otherwise have stood — a row that quietly loses its button explains
+  // nothing. The positional reasons stay in challenge mode, where they were.
+  const blockedByProtection = positional.ok && !isMe && !!protection;
+  const showReason = (challengeMode || blockedByProtection)
+    && myPosition !== null && !isMe && !eligible;
   const rankChange = rp.ranking.previous_position !== null
     ? rp.ranking.previous_position - pos  // positive = moved up
     : 0;
@@ -154,6 +170,8 @@ export default function RankingsPage() {
   const { data: rankings = [], isLoading, isError, refetch } = useRankings();
   const { player, session } = useAuthStore();
   const isGuest = !session;
+  // Guests cannot challenge anyone, so never ask the database who is shielded.
+  const { data: protectedPlayers } = useProtectedPlayers(!isGuest);
   const [search, setSearch]   = useState('');
   const [tab, setTab]         = useState<'all' | 'near'>('all');
   const [searchParams]        = useSearchParams();
@@ -260,6 +278,7 @@ export default function RankingsPage() {
                 myPosition={myPosition}
                 myPlayerId={player?.id ?? null}
                 activeRanks={activeRanks}
+                protectedPlayers={protectedPlayers ?? NO_PROTECTION}
                 index={i}
                 challengeMode={challengeMode}
                 isGuest={isGuest}

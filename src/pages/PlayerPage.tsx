@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { unwrapList } from '../lib/supabaseResult';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
+import { useProtectedPlayers } from '../hooks/useProtectedPlayers';
 import { Avatar } from '../components/Avatar';
 import { GlassCard } from '../components/GlassCard';
 import { InactivePlayerBanner } from '../components/InactivePlayerBanner';
@@ -55,9 +56,16 @@ export default function PlayerPage() {
     rankings.map((r) => ({ position: r.ranking.position, isActive: r.player.is_active })),
   );
 
-  const eligible = myRanking && targetRanking
+  const inRange = myRanking && targetRanking
     ? canChallengeOnLadder(myRanking.ranking.position, targetRanking.ranking.position, activeRanks)
     : false;
+
+  // A player with a live challenge of their own is shielded, and create-challenge
+  // refuses anyone who goes after them. Say so here, where there is room for the
+  // whole sentence, instead of offering a button that leads to a refusal.
+  const { data: protectedPlayers } = useProtectedPlayers(!!myPlayer);
+  const protection = (id && protectedPlayers?.get(id)) || null;
+  const eligible = inRange && !protection;
 
   // When an admin resets stats with "hide past matches", player_season_stats
   // carries a stats_reset_at stamp. Match History must respect it, or the
@@ -182,6 +190,19 @@ export default function PlayerPage() {
               >
                 <Swords size={16} /> Challenge Player
               </Button>
+            </div>
+          )}
+
+          {/* In range, but shielded by a challenge of their own. The button is
+              gone; this says why, in the words the server would have used. */}
+          {inRange && player.is_active && protection && (
+            <div className="mt-5 pt-3 border-t border-white/5">
+              <p className="font-[Barlow] text-sm font-semibold text-[#E8E2D6] mb-1">
+                {protection.label}
+              </p>
+              <p className="font-[Barlow] text-xs text-[#9CA3AF] leading-relaxed">
+                {protection.detail}
+              </p>
             </div>
           )}
         </GlassCard>

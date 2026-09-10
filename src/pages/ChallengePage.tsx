@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, CheckCircle, Swords, Minus, Plus } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
+import { useProtectedPlayers } from '../hooks/useProtectedPlayers';
 import { callEdgeFunction, edgeErrorMessage } from '../lib/edgeFunctions';
 import { PoolBall } from '../components/PoolBall';
 import { GlassCard } from '../components/GlassCard';
@@ -19,6 +20,11 @@ export default function ChallengePage() {
   const navigate = useNavigate();
   const { player } = useAuthStore();
   const { data: rankings = [], isLoading: rankingsLoading } = useRankings();
+  // Who is shielded by a challenge of their own. Empty until it loads, and
+  // empty if the call fails, so this only ever stops a challenge on a positive
+  // answer — never on a slow one. See src/hooks/useProtectedPlayers.ts.
+  const { data: protectedPlayers } = useProtectedPlayers(!!player);
+  const protection = (id && protectedPlayers?.get(id)) || null;
 
   const target   = rankings.find((r) => r.player.id === id);
   const myRanking = rankings.find((r) => r.player.id === player?.id);
@@ -48,6 +54,32 @@ export default function ChallengePage() {
             Player not found. They may have been removed from the list.
           </div>
         )}
+      </div>
+    );
+  }
+
+  // Shielded by a challenge of their own. create-challenge would refuse this at
+  // the last step, so stop here rather than walking the player through three
+  // screens for nothing. The wording is the database's, the same sentence the
+  // refusal would have carried.
+  if (protection) {
+    return (
+      <div className="min-h-screen px-4 pt-4">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-[#9CA3AF] p-2 -ml-2 mb-4">
+          <ChevronLeft size={24} /> Back
+        </button>
+        <GlassCard className="p-5 text-center">
+          <div className="text-5xl mb-4">🛡️</div>
+          <h1 className="font-[Bebas_Neue] text-3xl text-[#E8E2D6] mb-1">
+            {target.player.full_name} is {protection.label.toLowerCase()}
+          </h1>
+          <p className="font-[Barlow] text-sm text-[#9CA3AF] leading-relaxed mb-6">
+            {protection.detail}
+          </p>
+          <Button variant="secondary" fullWidth onClick={() => navigate('/rankings?challenge=1')}>
+            Find someone else
+          </Button>
+        </GlassCard>
       </div>
     );
   }
