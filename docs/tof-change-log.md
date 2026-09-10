@@ -19,6 +19,83 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-09-10 — The ladder stops offering a Challenge button that cannot work
+
+**Chase asked** for this one, off the open-items list rather than from Carl: the
+challenge screen did not know who was protected, so a player could tap Challenge
+and get a refusal.
+
+**Shipped:** A player shielded by a live challenge of their own no longer shows a
+Challenge button. The reason shows in its place, on the list, on their profile,
+and on the challenge screen, which now refuses up front instead of walking
+somebody through three steps to a dead end. When this went out, 18 of the people
+on the list were carrying a button that could not work.
+
+**How, and the choice behind it.** The obvious build is to work protection out in
+the browser. That would have been a second copy of a subtle, live rule in
+TypeScript, which is how this app's rules have drifted before -- it is why
+`engaged_player_ids()` exists at all, and its comment promises to be the single
+definition so "the edge function and any future SQL cannot drift apart". So the
+predicate moved into SQL instead. `protected_player_ids()` answers it once, with
+the reason attached: a short label for the list, and the full sentence for the
+screens with room for one. `create-challenge` asks the same function and returns
+that sentence as its refusal, so the words a player reads have one source too.
+Both readings of the rule live there -- the open-player shield when the rule is
+on, one incoming challenge at a time when it is off -- and the edge function
+carries neither predicate any more.
+
+On the client the answer arrives as another eligibility reason, so the machinery
+that already explains "Out of range" and "Inactive" explains this too. A
+positional reason still wins, because out of range is the more basic fact and
+does not change when someone else's match is played.
+
+**The two sides fail in opposite directions, deliberately.** The server fails
+closed, refusing when it cannot tell. The client fails open: the button appears
+and the old refusal-at-submit happens. Failing closed in the browser would block
+legitimate challenges over one dropped request, which is the worse mistake, and
+it is only safe because the server enforces independently.
+
+**Files:** `supabase/migrations/20260910071500_protected_player_ids.sql`,
+`supabase/functions/create-challenge/index.ts`,
+`src/hooks/useProtectedPlayers.ts`, `src/lib/ladder.ts`,
+`src/pages/RankingsPage.tsx`, `src/pages/PlayerPage.tsx`,
+`src/pages/ChallengePage.tsx`
+**Commit:** 708f0b4 (PR #2) · **Deploy:** migration applied; `create-challenge`
+v5 → v6, verified live -- its own CORS 200 proves it boots, and the deployed
+source was read back and matched; frontend ships on merge through the Git
+connection
+**Gates:** build ✓ · tests 146/146 ✓ · lint clean on changed files ·
+`supabase-migration-reviewer` and `demo-readiness-checker` both run
+
+**What the migration review caught.** The first cut defaulted an empty
+`league_settings` to the rule being ON, while `create-challenge` reads a missing
+row as OFF and calls that the safe direction. The two would have disagreed about
+who is protected. It also surfaced `20260817144000`, where a neighbouring
+function's `SECURITY DEFINER` grant to `authenticated` had to be walked back for
+returning more than the tables would show. This one reads only `challenges` and
+`league_settings`, and `authenticated` already holds SELECT on both while `anon`
+holds SELECT on neither -- both checked on the live database -- so it ships as
+`SECURITY INVOKER` and can never return more than the caller could query by hand.
+
+**Flags:**
+- **The other half of this rule is still invisible.** A challenger who goes after
+  an engaged player while an open one was available silently gives up their own
+  shield and is never told. That is a bigger surprise than the refusal this
+  fixes, and it needs the open-player scan on the client, which is a wider
+  change. Not started.
+- Nobody has ever lost protection in live play: every one of the 18 live
+  challenges carries `challenger_protected = true`. So the silent-forfeit path
+  above has not yet bitten anyone, and the shield logic has only ever been
+  exercised in its generous direction.
+- The three questionnaire tests that pinned this predicate now pin it at its new
+  home rather than being deleted. One of them caught an over-strict assertion
+  written during this change: `create-challenge` still *writes*
+  `challenger_protected`, because deciding whether a new challenger keeps their
+  own shield needs their range, which the database does not know. Only the read
+  moved.
+
+---
+
 ## 2026-09-09 — A Remove button that removes, and the near-miss that shaped it
 
 **Carl asked:** "When I remove players still keeps them as inactive rather then
