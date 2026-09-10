@@ -22,7 +22,10 @@ const sqlOnly = (text) =>
 const jobs        = sqlOnly(readMigration('scheduled_jobs_and_match_day_reminders'));
 const announce    = sqlOnly(readMigration('league_announcements'));
 const openPlayer  = sqlOnly(readMigration('open_player_protection'));
-const protectedIds = sqlOnly(readMigration('protected_player_ids'));
+// The current definition of the function, not its first cut: 20260910074500
+// CREATE OR REPLACEs the whole thing, so the assertions below pin what is
+// actually live rather than superseded history.
+const protectedIds = sqlOnly(readMigration('protection_expiry_guard'));
 
 const createChallenge = read('supabase/functions/create-challenge/index.ts');
 const protectionHook  = read('src/hooks/useProtectedPlayers.ts');
@@ -149,6 +152,18 @@ test('a failed read refuses the challenge instead of handing out protection', ()
   // would read as a clear board and grant protection nobody earned.
   assert.match(createChallenge, /if \(shieldError\)[\s\S]*?status: 503/);
   assert.match(createChallenge, /if \(engagedRes\.error\)[\s\S]*?status: 503/);
+});
+
+test('a lapsed pending challenge stops shielding before the sweep runs', () => {
+  // create-challenge calls expire_stale_challenges() before it checks, so it
+  // never sees a 'pending' challenge whose expires_at has passed. The client
+  // cannot run that sweep and the cron is hourly, so the rule-OFF branch has to
+  // apply the same predicate itself or it would invent a refusal the server
+  // would not make -- the opposite of failing open.
+  assert.match(protectedIds, /NOT \(c\.status = 'pending' AND c\.expires_at <= now\(\)\)/);
+  // The rule-ON branch needs no such guard: its deadline test already excludes
+  // a lapsed pending challenge.
+  assert.match(protectedIds, /COALESCE\(c\.match_deadline, c\.expires_at\) > now\(\)/);
 });
 
 test('the ladder and the server ask the same question', () => {

@@ -17,7 +17,6 @@ import {
   activeRankByPosition,
   challengeEligibilityOnLadder,
   challengeEligibilityWithProtection,
-  canChallengeOnLadder,
   type Eligibility,
 } from '../lib/ladder';
 
@@ -195,12 +194,19 @@ export default function RankingsPage() {
     let list = rankings;
     if (search) list = list.filter((r) => r.player.full_name.toLowerCase().includes(search.toLowerCase()));
     if (tab === 'near' && myPosition !== null) {
+      // This tab is labelled "Can Challenge", so it has to mean it. A player
+      // shielded by a challenge of their own is not someone you can challenge,
+      // and listing them here would contradict the badge their own row draws.
+      // They stay on All Players, where explaining the reason is the point.
       list = list.filter((r) =>
-        canChallengeOnLadder(myPosition, r.ranking.position, activeRanks) && r.player.id !== player?.id
+        challengeEligibilityWithProtection(
+          challengeEligibilityOnLadder(myPosition, r.ranking.position, activeRanks),
+          protectedPlayers?.get(r.player.id),
+        ).ok && r.player.id !== player?.id
       );
     }
     return list;
-  }, [rankings, search, tab, myPosition, player?.id, activeRanks]);
+  }, [rankings, search, tab, myPosition, player?.id, activeRanks, protectedPlayers]);
 
   return (
     <div className={`min-h-screen px-4 pb-4 ${isGuest ? 'pt-3' : 'pt-8'}`}>

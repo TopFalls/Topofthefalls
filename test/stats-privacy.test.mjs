@@ -122,8 +122,11 @@ test('the list marks inactive players and never offers a challenge', () => {
   assert.match(rankingsPage, /const isInactive = !rp\.player\.is_active/);
   assert.match(rankingsPage, /Inactive<\/Badge>/);
   // Eligibility runs on active rank, so an inactive player is never eligible.
+  // Both call sites: the row itself, and the "Can Challenge" tab filter. The
+  // filter now folds protection in on top, which can only ever remove someone
+  // from the list, never add them back.
   assert.match(rankingsPage, /challengeEligibilityOnLadder\(myPosition, pos, activeRanks\)/);
-  assert.match(rankingsPage, /canChallengeOnLadder\(myPosition, r\.ranking\.position, activeRanks\)/);
+  assert.match(rankingsPage, /challengeEligibilityOnLadder\(myPosition, r\.ranking\.position, activeRanks\)/);
 });
 
 test('the profile page uses the skip rule too', () => {
