@@ -93,6 +93,34 @@ defaults (identical to the upstream app — this is the same league):
   silently kill guest access and the live scoreboard. The `WHERE` clause and
   the explicit column list are the boundary, and they are verified from outside
   with the public key
+- **A loss costs exactly one spot — never more, never less.** Carl, 2026-09-11:
+  "A player can never lose more than one spot for a loss. But a lesser ranked
+  player challenging a higher ranked player gets the spot of that player that
+  was higher, and the higher player always only moves down one." So a win from
+  below is a **rotation, not a swap**: the winner takes the spot they
+  challenged, the loser moves down one, and everyone the winner passed moves
+  down one as well.
+
+  ```
+  before   #43 Dan    #44 Jo     #45 Kurt
+  Kurt challenges Dan two up and wins
+  after    #43 Kurt   #44 Dan    #45 Jo
+  ```
+
+  The app swapped the two players until `20260911120000`, which is the same
+  thing only when they are adjacent — and spots 11 and below may challenge two
+  up, so a two-spot fall was a legal, routine outcome. 14 of 38 ladder-moving
+  forfeits on the live project did exactly that. `cascade_ranking_after_win` is
+  the single place this happens; played matches, admin-settled disputes and
+  forfeits all route through it.
+
+- **Say which way the list runs, every time.** Up the list means towards #1 and
+  a **smaller** number; down the list means away from #1 and a **bigger**
+  number. "Higher ranked" means a better spot and a smaller number, which is the
+  opposite of a higher number — so never write "higher" or "lower" about a
+  position without saying which you mean. The rules text in
+  `src/config/league.ts` opens with this for the same reason.
+
 - **The league runs continuously — there are no seasons.** No season start, no
   offseason, no rollover; the challenge list is always live. Never use season
   framing in UI copy, admin labels, emails or customer docs — say "the list" or

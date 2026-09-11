@@ -19,6 +19,69 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-09-11 — A loss costs exactly one spot, and the list says which way is up
+
+**Carl asked:** "A player can never lose more than one spot for a loss. But a
+lesser ranked player challenging a higher ranked player gets the spot of that
+player that was higher, and the higher player always only moves down one. They
+can never move down less than one. And by down, I mean in a worse position. We
+need to make clear verbiage that moving down on the list isn't lower in number
+ranking, it's higher, and moving up on the list is towards number one."
+
+**The app was swapping the two players.** The winner took the loser's spot and
+the loser took the winner's. When they are next to each other that is the same
+thing as the rule, which is why it went unnoticed for so long. When they are
+not, the loser fell exactly as far as the winner climbed — and spots 11 and
+below may challenge **two** up, so a two-spot fall was a legal, routine result.
+
+**Measured before writing a line.** Of 38 forfeits that moved the ladder, 24
+dropped the loser one spot and **14 dropped them two**. Every one of the 14 was
+a challenge spanning more than one position. This is separate from yesterday's
+forfeit loop and was hiding underneath it: the loop explained why the ladder
+churned, this explains why individual results were wrong.
+
+**Shipped:** `cascade_ranking_after_win` now rotates instead of swapping.
+
+```
+before   #43 Dan    #44 Jo     #45 Kurt
+Kurt challenges Dan two up and wins
+after    #43 Kurt   #44 Dan    #45 Jo
+```
+
+The winner takes the spot they challenged, the loser moves down one, and anyone
+the winner passed moves down one as well. It is the single place the ladder
+moves after a win — played matches, admin-settled disputes and forfeits all call
+it — so one function covers all three. A successful defence still moves nobody.
+
+**`reverse_challenge_decline_forfeit` needed no change**, which is the
+interesting part: its fast path fires only on a clean exchange, which under a
+rotation is exactly the adjacent case where the two agree, and its other branch
+is a block shift that is the precise inverse of the rotation. The reversal was
+written expecting a rotation all along; the swap was the odd one out.
+
+**The verbiage.** The rules text now opens with direction, because every rule
+under it depends on which way the list runs and "higher" pulls both ways: *"Up
+the list means towards #1, and a smaller number. Down the list means away from
+#1, and a bigger number."* Followed by the movement rule in plain terms. Both
+are now canon in `CLAUDE.md` as well.
+
+**Files:** `supabase/migrations/20260911120000_a_loss_costs_exactly_one_spot.sql`,
+`src/config/league.ts`, `CLAUDE.md`, `test/ladder-one-spot.test.mjs`
+**Gates:** build ✓ · tests 166/166 ✓ (14 new — the rotation is modelled in JS
+and checked across every legal gap, so the arithmetic is tested rather than the
+SQL eyeballed) · `supabase-migration-reviewer` run
+
+**Flags:**
+- **History is not repaired.** 14 past results moved a loser two spots instead
+  of one, but Mike has hand-corrected the ladder five times since, so the
+  current standings are what he intends. Replaying old results over a ladder
+  that has been manually adjusted would be guesswork on top of a correct board.
+  The rule applies from here.
+- This is a rule Carl had never written down, and the app had no canon for it
+  either. It is canon now.
+
+---
+
 ## 2026-09-10 — The ladder loop: a reversed forfeit no longer comes back an hour later
 
 **Carl asked:** "Yesterday a player at 98th position challenged the 97th position

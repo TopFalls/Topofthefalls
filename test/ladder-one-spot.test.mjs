@@ -1,0 +1,127 @@
+import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import test from 'node:test';
+
+const root = process.cwd();
+const migrationDir = join(root, 'supabase', 'migrations');
+
+function migrationMatching(fragment) {
+  const name = readdirSync(migrationDir).find((file) => file.includes(fragment));
+  assert.ok(name, `expected a migration matching "${fragment}"`);
+  return readFileSync(join(migrationDir, name), 'utf8');
+}
+
+const rotation = migrationMatching('a_loss_costs_exactly_one_spot');
+
+// Carl's rule, verbatim: "A player can never lose more than one spot for a loss.
+// But a lesser ranked player challenging a higher ranked player gets the spot of
+// that player that was higher, and the higher player always only moves down one.
+// They can never move down less than one."
+//
+// The app used to swap the two players, so the loser fell as far as the winner
+// climbed. Spots 11 and below may challenge two up, so a two-spot fall was a
+// legal, routine outcome -- 14 of 38 ladder-moving forfeits on the live project
+// did exactly that before this landed.
+
+// A pure model of the rotation, so the arithmetic is checked rather than the
+// SQL being eyeballed. Positions are 1..n, smaller is better.
+function applyWin(ladder, winner, loser) {
+  const w = ladder.indexOf(winner) + 1;
+  const l = ladder.indexOf(loser) + 1;
+  if (w <= l) return ladder.slice(); // defender held; nothing moves
+  const next = ladder.slice();
+  next.splice(w - 1, 1);          // winner leaves their spot
+  next.splice(l - 1, 0, winner);  // and takes the one they challenged
+  return next;
+}
+
+test('the winner takes the spot they challenged, over any legal gap', () => {
+  const before = ['Dan', 'Jo', 'Kurt'];              // #43 #44 #45
+  const after = applyWin(before, 'Kurt', 'Dan');     // Kurt challenges two up
+  assert.equal(after.indexOf('Kurt') + 1, 1, 'winner takes the challenged spot');
+});
+
+test('the loser moves down exactly one, never further', () => {
+  const before = ['Dan', 'Jo', 'Kurt'];
+  const after = applyWin(before, 'Kurt', 'Dan');
+  assert.equal(after.indexOf('Dan') + 1, 2, 'loser drops one, not two');
+});
+
+test('a player the winner passed also moves down exactly one', () => {
+  const before = ['Dan', 'Jo', 'Kurt'];
+  const after = applyWin(before, 'Kurt', 'Dan');
+  assert.equal(after.indexOf('Jo') + 1, 3, 'the passed player drops one');
+});
+
+test('nobody ever drops more than one spot from a single result', () => {
+  // Every legal challenge gap, over a ladder long enough to expose a cascade.
+  const before = Array.from({ length: 12 }, (_, i) => `p${i + 1}`);
+  for (let gap = 1; gap <= 5; gap += 1) {
+    for (let w = gap + 1; w <= before.length; w += 1) {
+      const winner = before[w - 1];
+      const loser = before[w - 1 - gap];
+      const after = applyWin(before, winner, loser);
+      for (const name of before) {
+        const wasAt = before.indexOf(name) + 1;
+        const nowAt = after.indexOf(name) + 1;
+        const dropped = nowAt - wasAt;
+        assert.ok(dropped <= 1, `${name} dropped ${dropped} spots (gap ${gap})`);
+      }
+    }
+  }
+});
+
+test('the loser never fails to drop -- a win always costs the loser a spot', () => {
+  const before = Array.from({ length: 12 }, (_, i) => `p${i + 1}`);
+  for (let gap = 1; gap <= 5; gap += 1) {
+    for (let w = gap + 1; w <= before.length; w += 1) {
+      const winner = before[w - 1];
+      const loser = before[w - 1 - gap];
+      const after = applyWin(before, winner, loser);
+      const dropped = (after.indexOf(loser) + 1) - (before.indexOf(loser) + 1);
+      assert.equal(dropped, 1, `loser moved ${dropped} at gap ${gap}`);
+    }
+  }
+});
+
+test('the ladder stays contiguous with nobody duplicated or lost', () => {
+  const before = Array.from({ length: 12 }, (_, i) => `p${i + 1}`);
+  const after = applyWin(before, 'p9', 'p6');
+  assert.equal(after.length, before.length);
+  assert.equal(new Set(after).size, before.length, 'no duplicates, nobody dropped');
+});
+
+test('a successful defence moves nobody', () => {
+  const before = ['Dan', 'Jo', 'Kurt'];
+  // The higher-placed player wins: cascade_ranking_after_win returns early.
+  assert.deepEqual(applyWin(before, 'Dan', 'Kurt'), before);
+});
+
+// ── and that the SQL actually implements the model above ────────────────────
+
+test('the migration rotates rather than swapping', () => {
+  // The winner lands on the loser's spot...
+  assert.match(rotation, /SET position = v_loser_pos/);
+  // ...and the block the winner passed comes back one lower. -999 off a +1000
+  // park is the one-spot drop; -1000 would be a no-op and -1001 would be a
+  // one-spot climb, so this constant is the rule.
+  assert.match(rotation, /position = position - 999/);
+});
+
+test('the migration still refuses to move anything when the defender won', () => {
+  assert.match(rotation, /v_winner_pos <= v_loser_pos[\s\S]*?RETURN;/);
+});
+
+test('the migration parks the block before landing anyone back in it', () => {
+  // rankings.position is UNIQUE and not deferrable, so this ordering is load
+  // bearing, not style.
+  assert.match(rotation, /position\s*=\s*position \+ 1000/);
+  assert.match(rotation, /LOCK TABLE public\.rankings IN SHARE ROW EXCLUSIVE MODE/);
+});
+
+test('the rules text says which way up the list is', () => {
+  const rules = readFileSync(join(root, 'src', 'config', 'league.ts'), 'utf8');
+  assert.match(rules, /Up the list means towards #1, and a smaller number/);
+  assert.match(rules, /never costs more than one spot, and never costs less than one/);
+});

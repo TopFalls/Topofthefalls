@@ -63,6 +63,11 @@ export const LEAGUE = {
     },
   ],
   rulesSummary: [
+    // Direction first, because every rule below depends on it and "higher" and
+    // "lower" pull in opposite directions depending on whether you mean the
+    // list or the number.
+    'Up the list means towards #1, and a smaller number. Down the list means away from #1, and a bigger number. The player at #1 is at the top; the biggest number is the bottom.',
+    'Win a challenge and you take the spot of the player you challenged. They move down exactly one, and anyone you passed moves down one as well. A single loss never costs more than one spot, and never costs less than one.',
     'You must be approved to enter the list.',
     'All games are rack-your-own. Players lag for the break; the winner breaks unless both players agree otherwise.',
     'First player to challenge gets the first chance.',
