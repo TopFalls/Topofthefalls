@@ -160,3 +160,65 @@ test('the rules text says which way up the list is', () => {
   assert.match(rules, /Up the list means towards #1, and a smaller number/);
   assert.match(rules, /Nobody ever falls more than one spot from a single result/);
 });
+
+// ── the reversal must refuse what it can no longer undo ─────────────────────
+//
+// Found by the migration review, then confirmed on live data. The rotation
+// changes the shape of the forfeit events reverse_challenge_decline_forfeit has
+// to invert, and the function could not tell the old shape from the new one:
+//
+//   swap era, any gap   -> forfeiting_new_position = challenger_previous_position
+//   rotation era, any   -> forfeiting_new_position = forfeiting_previous_position + 1
+//
+// Those coincide at a gap of one and diverge above it. The old fast path keyed
+// on the swap pattern, so a swap-era gap-2 event would have been undone as if it
+// were a rotation -- the challenger dropping one spot instead of returning to
+// their own, and an untouched player in between pulled down a spot they never
+// lost. Seven such events existed live; six were already refused because the
+// positions had drifted, one was still exactly on its recorded positions.
+
+const reversalGuard = migrationMatching('reversal_refuses_what_it_cannot_undo');
+
+function recordedShapeIsRotation({ chPrev, foPrev, foNew }) {
+  void chPrev;
+  return foNew === foPrev + 1;
+}
+
+test('a rotation-era forfeit is recognised as invertible at every gap', () => {
+  for (let gap = 1; gap <= 5; gap += 1) {
+    const foPrev = 40;
+    const chPrev = foPrev + gap;
+    // The rotation always leaves the loser exactly one below where they were.
+    assert.ok(recordedShapeIsRotation({ chPrev, foPrev, foNew: foPrev + 1 }),
+      `gap ${gap} should be invertible`);
+  }
+});
+
+test('a swap-era forfeit over a gap above one is recognised as NOT invertible', () => {
+  for (let gap = 2; gap <= 5; gap += 1) {
+    const foPrev = 40;
+    const chPrev = foPrev + gap;
+    // The swap put the loser where the challenger had been.
+    assert.equal(recordedShapeIsRotation({ chPrev, foPrev, foNew: chPrev }), false,
+      `swap-era gap ${gap} must be refused`);
+  }
+});
+
+test('a swap-era forfeit over a gap of one is still invertible -- the shapes agree', () => {
+  const foPrev = 40;
+  const chPrev = 41;
+  assert.ok(recordedShapeIsRotation({ chPrev, foPrev, foNew: chPrev }),
+    'at gap 1 a swap and a rotation record the same thing');
+});
+
+test('the migration refuses rather than guessing', () => {
+  assert.match(reversalGuard, /forfeiting_new_position IS DISTINCT FROM v_event\.forfeiting_previous_position \+ 1/);
+  assert.match(reversalGuard, /recorded before the ladder rule changed/);
+});
+
+test('the migration leaves exactly one route through the ranking restore', () => {
+  // The fast path is gone; the block shift inverts a rotation at every gap.
+  assert.equal(reversalGuard.includes('PERFORM public.cascade_ranking_after_win'), false,
+    'the fast path must not survive -- it cannot tell a swap from a rotation');
+  assert.match(reversalGuard, /position = position - 1001/);
+});
