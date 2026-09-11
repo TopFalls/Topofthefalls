@@ -59,15 +59,28 @@ rotation is exactly the adjacent case where the two agree, and its other branch
 is a block shift that is the precise inverse of the rotation. The reversal was
 written expecting a rotation all along; the swap was the odd one out.
 
+**A failed challenge moves nobody, and the first draft of this got that wrong.**
+Carl, reading it back: *"There's times where a loss doesn't change the list at
+all, and that's when a player lower on the list challenging a higher ranked
+player loses. Nothing changes in that situation."* The code was already right —
+`cascade_ranking_after_win` returns early when the winner is already ahead — but
+the wording said a loss "never costs less than one spot", which is only true of
+a defender beaten from below. A challenger who loses stays exactly where they
+are; the defender does not climb for holding the spot either. Corrected in the
+rules text, the migration, the canon and the test names, and the case now has
+its own test across every legal gap. Losing does still carry a cooldown — defend
+or wait seven days — but that is a wait, not a position.
+
 **The verbiage.** The rules text now opens with direction, because every rule
 under it depends on which way the list runs and "higher" pulls both ways: *"Up
 the list means towards #1, and a smaller number. Down the list means away from
-#1, and a bigger number."* Followed by the movement rule in plain terms. Both
-are now canon in `CLAUDE.md` as well.
+#1, and a bigger number."* Then the two outcomes, in plain terms: win and you
+take the spot, everyone you passed drops one; lose and nothing changes at all.
+Both are now canon in `CLAUDE.md` as well.
 
 **Files:** `supabase/migrations/20260911120000_a_loss_costs_exactly_one_spot.sql`,
 `src/config/league.ts`, `CLAUDE.md`, `test/ladder-one-spot.test.mjs`
-**Gates:** build ✓ · tests 166/166 ✓ (14 new — the rotation is modelled in JS
+**Gates:** build ✓ · tests 169/169 ✓ (17 new — the rotation is modelled in JS
 and checked across every legal gap, so the arithmetic is tested rather than the
 SQL eyeballed) · `supabase-migration-reviewer` run
 

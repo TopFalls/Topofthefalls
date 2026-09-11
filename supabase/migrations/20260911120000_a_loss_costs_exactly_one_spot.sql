@@ -23,7 +23,17 @@
 --
 -- The winner takes the spot they challenged. The loser moves down one. Anyone
 -- the winner passed moves down one as well. Nobody falls further than one spot
--- from a single result, and the loser never fails to fall at all.
+-- from a single result.
+--
+-- A challenger who loses pays nothing on the list. Carl, clarifying the rule:
+-- "There's times where a loss doesn't change the list at all, and that's when a
+-- player lower on the list challenging a higher ranked player loses. Nothing
+-- changes in that situation." Both players stay exactly where they were -- the
+-- defender does not climb for holding their spot, and the challenger does not
+-- fall for trying. That is the early RETURN below, and it is the common case:
+-- the only way to move down the list is to be beaten by somebody below you.
+-- (Losing does carry a cooldown -- defend or wait seven days before challenging
+-- up again -- but that is a wait, not a position.)
 --
 -- This function is the one place the ladder moves after a win: submit-result,
 -- resolve-dispute and apply_challenge_decline_forfeit all call it, so fixing it
@@ -51,8 +61,10 @@ BEGIN
   SELECT position INTO v_winner_pos FROM public.rankings WHERE player_id = p_winner_id;
   SELECT position INTO v_loser_pos  FROM public.rankings WHERE player_id = p_loser_id;
 
-  -- The winner was already ahead of the loser, so nothing moves. A player
-  -- defending their spot keeps it; they do not climb for winning at home.
+  -- The winner was already ahead of the loser, so nothing moves at all. This is
+  -- a challenger losing to somebody above them: the defender keeps their spot
+  -- and does not climb for holding it, and the challenger keeps theirs and does
+  -- not fall for trying. Losing a challenge never costs a spot.
   IF v_winner_pos IS NULL OR v_loser_pos IS NULL OR v_winner_pos <= v_loser_pos THEN
     RETURN;
   END IF;

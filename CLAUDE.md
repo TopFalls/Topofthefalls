@@ -93,13 +93,25 @@ defaults (identical to the upstream app — this is the same league):
   silently kill guest access and the live scoreboard. The `WHERE` clause and
   the explicit column list are the boundary, and they are verified from outside
   with the public key
-- **A loss costs exactly one spot — never more, never less.** Carl, 2026-09-11:
-  "A player can never lose more than one spot for a loss. But a lesser ranked
-  player challenging a higher ranked player gets the spot of that player that
-  was higher, and the higher player always only moves down one." So a win from
-  below is a **rotation, not a swap**: the winner takes the spot they
-  challenged, the loser moves down one, and everyone the winner passed moves
-  down one as well.
+- **Being beaten from below costs exactly one spot. Losing a challenge costs
+  nothing.** Carl, 2026-09-11: "A player can never lose more than one spot for a
+  loss. But a lesser ranked player challenging a higher ranked player gets the
+  spot of that player that was higher, and the higher player always only moves
+  down one." And, clarifying: "There's times where a loss doesn't change the
+  list at all, and that's when a player lower on the list challenging a higher
+  ranked player loses. Nothing changes in that situation."
+
+  So there are exactly two outcomes:
+
+  - **Challenger wins** — a **rotation, not a swap**: the winner takes the spot
+    they challenged, the loser moves down one, and everyone the winner passed
+    moves down one as well.
+  - **Challenger loses** — *nothing moves*. The defender does not climb for
+    holding their spot; the challenger does not fall for trying. A losing
+    challenger does pick up a cooldown (defend or wait seven days), but that is
+    a wait, not a position.
+
+  The only way to move down the list is to be beaten by somebody below you.
 
   ```
   before   #43 Dan    #44 Jo     #45 Kurt

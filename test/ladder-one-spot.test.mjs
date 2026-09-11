@@ -72,7 +72,7 @@ test('nobody ever drops more than one spot from a single result', () => {
   }
 });
 
-test('the loser never fails to drop -- a win always costs the loser a spot', () => {
+test('a defender beaten from below always drops exactly one, never zero', () => {
   const before = Array.from({ length: 12 }, (_, i) => `p${i + 1}`);
   for (let gap = 1; gap <= 5; gap += 1) {
     for (let w = gap + 1; w <= before.length; w += 1) {
@@ -96,6 +96,41 @@ test('a successful defence moves nobody', () => {
   const before = ['Dan', 'Jo', 'Kurt'];
   // The higher-placed player wins: cascade_ranking_after_win returns early.
   assert.deepEqual(applyWin(before, 'Dan', 'Kurt'), before);
+});
+
+// Carl, clarifying: "There's times where a loss doesn't change the list at all,
+// and that's when a player lower on the list challenging a higher ranked player
+// loses. Nothing changes in that situation. So a loss does not cost one spot to
+// the person that's already lower than the person they lost their challenge to."
+//
+// This is the common outcome, and the one the earlier wording of this file got
+// wrong by saying a loss "never costs less than one spot". It does, when the
+// person losing is the challenger.
+test('losing a challenge costs the challenger nothing, over every legal gap', () => {
+  const before = Array.from({ length: 12 }, (_, i) => `p${i + 1}`);
+  for (let gap = 1; gap <= 5; gap += 1) {
+    for (let c = gap + 1; c <= before.length; c += 1) {
+      const challenger = before[c - 1];
+      const defender = before[c - 1 - gap];
+      // The defender wins, so the defender is the winner passed to the function.
+      const after = applyWin(before, defender, challenger);
+      assert.deepEqual(after, before, `gap ${gap} from #${c} moved somebody`);
+      assert.equal(after.indexOf(challenger), before.indexOf(challenger),
+        'the challenger did not fall for trying');
+      assert.equal(after.indexOf(defender), before.indexOf(defender),
+        'the defender did not climb for holding');
+    }
+  }
+});
+
+test('the migration spells out that a failed challenge moves nobody', () => {
+  assert.match(rotation, /Losing a challenge never costs a spot/);
+});
+
+test('the rules text tells a player a failed challenge costs them nothing', () => {
+  const rules = readFileSync(join(root, 'src', 'config', 'league.ts'), 'utf8');
+  assert.match(rules, /Losing a challenge never costs you a spot/);
+  assert.match(rules, /the list does not change at all/);
 });
 
 // ── and that the SQL actually implements the model above ────────────────────
@@ -123,5 +158,5 @@ test('the migration parks the block before landing anyone back in it', () => {
 test('the rules text says which way up the list is', () => {
   const rules = readFileSync(join(root, 'src', 'config', 'league.ts'), 'utf8');
   assert.match(rules, /Up the list means towards #1, and a smaller number/);
-  assert.match(rules, /never costs more than one spot, and never costs less than one/);
+  assert.match(rules, /Nobody ever falls more than one spot from a single result/);
 });
