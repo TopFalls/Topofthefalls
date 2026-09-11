@@ -53,11 +53,24 @@ the winner passed moves down one as well. It is the single place the ladder
 moves after a win — played matches, admin-settled disputes and forfeits all call
 it — so one function covers all three. A successful defence still moves nobody.
 
-**`reverse_challenge_decline_forfeit` needed no change**, which is the
-interesting part: its fast path fires only on a clean exchange, which under a
-rotation is exactly the adjacent case where the two agree, and its other branch
-is a block shift that is the precise inverse of the rotation. The reversal was
-written expecting a rotation all along; the swap was the odd one out.
+**The reversal did need a change, and the first draft of this entry said it
+didn't.** The migration review caught it. `reverse_challenge_decline_forfeit`
+has to invert whatever the forfeit recorded, and the rotation changes the shape
+of that recording: a swap-era event stored the loser on the challenger's old
+spot, a rotation-era event stores them one below their own. Those agree at a gap
+of one and diverge above it, and the function could not tell them apart — its
+fast path keyed on the swap pattern, so a swap-era two-spot event would have
+been undone as a rotation, dropping the challenger a spot instead of returning
+them to their own and pulling down an untouched player in between.
+
+Seven such events are on the live project. Six are already refused because the
+positions have drifted from Mike's reorders. One — Kurt Mueller and Dan Patton,
+recorded at 02:07 that morning — was still exactly on its recorded positions and
+would have gone through. So `reverse_challenge_decline_forfeit` now refuses any
+event whose recorded move was not a one-spot drop, naming the date the rule
+changed and pointing the admin at the Rankings tab, and the fast path is gone so
+the block shift is the only route. Refusing is the right answer: the alternative
+is silently rearranging three people on a guess.
 
 **A failed challenge moves nobody, and the first draft of this got that wrong.**
 Carl, reading it back: *"There's times where a loss doesn't change the list at
@@ -79,10 +92,11 @@ take the spot, everyone you passed drops one; lose and nothing changes at all.
 Both are now canon in `CLAUDE.md` as well.
 
 **Files:** `supabase/migrations/20260911120000_a_loss_costs_exactly_one_spot.sql`,
+`supabase/migrations/20260911130000_reversal_refuses_what_it_cannot_undo.sql`,
 `src/config/league.ts`, `CLAUDE.md`, `test/ladder-one-spot.test.mjs`
-**Gates:** build ✓ · tests 169/169 ✓ (17 new — the rotation is modelled in JS
+**Gates:** build ✓ · tests 174/174 ✓ (22 new — the rotation is modelled in JS
 and checked across every legal gap, so the arithmetic is tested rather than the
-SQL eyeballed) · `supabase-migration-reviewer` run
+SQL eyeballed) · `supabase-migration-reviewer` run twice, once per migration
 
 **Flags:**
 - **History is not repaired.** 14 past results moved a loser two spots instead
@@ -90,6 +104,13 @@ SQL eyeballed) · `supabase-migration-reviewer` run
   current standings are what he intends. Replaying old results over a ladder
   that has been manually adjusted would be guesswork on top of a correct board.
   The rule applies from here.
+- **One old forfeit can no longer be undone by the button.** Kurt Mueller and
+  Dan Patton, 2026-09-11 02:07 — it was recorded under the swap rule over a
+  two-spot gap, so there is no honest way to reverse it automatically. The
+  button now says so and sends the admin to the Rankings tab. Six other
+  swap-era events were already un-reversible for an unrelated reason.
+- **The two migrations go on together and in order.** `20260911130000` applied
+  without `20260911120000` would refuse events the live code is still making.
 - This is a rule Carl had never written down, and the app had no canon for it
   either. It is canon now.
 

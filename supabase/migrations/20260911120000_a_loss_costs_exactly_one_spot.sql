@@ -39,12 +39,14 @@
 -- resolve-dispute and apply_challenge_decline_forfeit all call it, so fixing it
 -- here fixes played matches, admin-settled disputes and forfeits together.
 --
--- reverse_challenge_decline_forfeit already inverts a rotation. Its fast path
--- fires only when the recorded move was a clean exchange -- which, under this
--- function, is exactly the adjacent case where a rotation and a swap agree --
--- and its other branch is a block shift that is the precise inverse of the
--- rotation below. It needed no change, which is a good sign the rotation is
--- what the schema expected all along.
+-- reverse_challenge_decline_forfeit has to invert whatever the forfeit
+-- recorded, and this changes the shape of that recording. An earlier draft of
+-- this comment claimed the reversal needed no change; that was wrong, and the
+-- migration review caught it. The companion migration 20260911130000 teaches
+-- the reversal to tell a swap-era recording from a rotation-era one and refuse
+-- the ones it can no longer honestly undo. **Apply that one with this one, and
+-- after it.** On its own, this migration leaves a reversal that will mis-invert
+-- a swap-era event spanning more than one spot.
 
 CREATE OR REPLACE FUNCTION public.cascade_ranking_after_win(p_winner_id uuid, p_loser_id uuid)
 RETURNS void
