@@ -129,6 +129,10 @@ export const Layout: React.FC = () => {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => {
         queryClient.invalidateQueries({ queryKey: ['matches'] });
+        queryClient.invalidateQueries({ queryKey: ['cooldowns'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cooldowns' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['cooldowns'] });
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => {
         queryClient.invalidateQueries({ queryKey: ['notifications'] });

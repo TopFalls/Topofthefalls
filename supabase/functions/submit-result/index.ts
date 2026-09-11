@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webpush from 'npm:web-push';
+import { applyPostMatchCooldowns } from '../_shared/postMatchCooldowns.ts';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 
@@ -102,7 +103,7 @@ function validateFinalScore(
 }
 
 async function recordMatchFeePayments(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   matchId: string,
   actorProfileId: string,
   payers: MatchFeePayer[],
@@ -142,7 +143,7 @@ async function recordMatchFeePayments(
 // disputed. Called from both paths so admin dispute resolution doesn't have
 // to chase down payment methods after the fact.
 async function recordSubmittedMatchFees(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   match: Record<string, unknown>,
   actorProfileId: string,
 ): Promise<void> {
@@ -197,40 +198,6 @@ async function recordSubmittedMatchFees(
   }
 }
 
-/**
- * Rule 5 cooldowns.
- *
- *   5a  defend your spot (higher seed wins)  no wait — challenge again at once
- *   5b  win from below and move up           cooldown_hours (24)
- *   5c  lose                                 loss_cooldown_hours (168 = 7 days)
- *
- * A cooldown blocks issuing a challenge and never blocks accepting one, which
- * is exactly what "must either defend or wait" requires — create-challenge is
- * the only caller that checks it.
- */
-async function applyPostMatchCooldowns(
-  supabase: ReturnType<typeof createClient>,
-  loserId: string,
-  winnerId: string,
-  winnerMovedUp: boolean,
-): Promise<void> {
-  const { data: settings } = await supabase
-    .from('league_settings')
-    .select('cooldown_hours, loss_cooldown_hours')
-    .single();
-  const winHours = settings?.cooldown_hours ?? 24;
-  const lossHours = settings?.loss_cooldown_hours ?? 168;
-
-  const rows: { player_id: string; type: string; expires_at: string }[] = [];
-  const at = (hours: number) => new Date(Date.now() + hours * 3600 * 1000).toISOString();
-  if (lossHours > 0) rows.push({ player_id: loserId, type: 'post_match', expires_at: at(lossHours) });
-  if (winnerMovedUp && winHours > 0) rows.push({ player_id: winnerId, type: 'post_match', expires_at: at(winHours) });
-
-  if (rows.length === 0) return;
-  const { error } = await supabase.from('cooldowns').insert(rows);
-  if (error) throw error;
-}
-
 // The rank-1 obligation used to live here: a 30-day, two-top-5-matches rule
 // inherited from TOC. Carl's Top of the Falls rules place no obligation on the
 // #1 player, and 20260615120000 disabled the database side of it — but this
@@ -238,7 +205,7 @@ async function applyPostMatchCooldowns(
 // apply_rank1_penalty is a no-op. Removed entirely; nothing writes rank1_since.
 
 async function confirmResult(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   matchId: string,
   winnerId: string,
   loserId: string,
@@ -246,7 +213,8 @@ async function confirmResult(
   p2Score: number,
   match: { discipline: string; race_length: number; player1_id: string; player2_id: string; challenge_id: string },
 ) {
-  const { error: matchError } = await supabase.from('matches').update({ status: 'confirmed', winner_id: winnerId, loser_id: loserId, player1_score: p1Score, player2_score: p2Score, completed_at: new Date().toISOString() }).eq('id', matchId);
+  const completedAt = new Date().toISOString();
+  const { error: matchError } = await supabase.from('matches').update({ status: 'confirmed', winner_id: winnerId, loser_id: loserId, player1_score: p1Score, player2_score: p2Score, completed_at: completedAt }).eq('id', matchId);
   if (matchError) throw matchError;
 
   const { error: challengeError } = await supabase.from('challenges').update({ status: 'confirmed' }).eq('id', match.challenge_id);
@@ -298,28 +266,7 @@ async function confirmResult(
     }
   }
 
-  // Rule 5a: successfully defending ends any live post-loss wait, so the
-  // higher-seeded winner may challenge up again immediately.
-  if (!winnerMovedUp) {
-    const { error: defendedCooldownError } = await supabase
-      .from('cooldowns')
-      .delete()
-      .eq('player_id', winnerId)
-      .eq('type', 'post_match')
-      .gt('expires_at', new Date().toISOString());
-    if (defendedCooldownError) throw defendedCooldownError;
-  }
-
-  await applyPostMatchCooldowns(supabase, loserId, winnerId, winnerMovedUp);
-
-  // A returning player's wait ends once they have defended their spot, win or
-  // lose — "must either defend or wait 7 days". player2 is the challenged side.
-  const { error: reentryError } = await supabase
-    .from('cooldowns')
-    .delete()
-    .eq('player_id', match.player2_id)
-    .eq('type', 'reentry');
-  if (reentryError) throw reentryError;
+  await applyPostMatchCooldowns(supabase, loserId, winnerId, winnerMovedUp, match.player2_id, completedAt);
 
   const disc = match.discipline;
   const disciplineSeeds = await Promise.all([winnerId, loserId].map((pid) => supabase.from('player_discipline_stats').upsert({ player_id: pid, discipline: disc }, { onConflict: 'player_id,discipline', ignoreDuplicates: true })));
@@ -378,7 +325,7 @@ async function confirmResult(
 // in person, and inventing a payment method would put a false line in the
 // treasury.
 async function handleAdminEntry(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   userId: string,
   body: Record<string, unknown>,
 ): Promise<Response> {
@@ -500,9 +447,9 @@ async function handleAdminEntry(
     // the admin stats page reads them. Without this the players Carl enters by
     // hand never appear on the challenge leaderboards at all.
     for (const [pid, column] of [[challengerId, 'challenges_issued'], [challengedId, 'challenges_received']] as [string, string][]) {
-      const { data: seasonRow } = await supabase.from('player_season_stats').select(column).eq('player_id', pid).maybeSingle();
+      const { data: seasonRow } = await supabase.from('player_season_stats').select(column).eq('player_id', pid).maybeSingle<Record<string, number>>();
       if (seasonRow) {
-        await supabase.from('player_season_stats').update({ [column]: (seasonRow as Record<string, number>)[column] + 1 }).eq('player_id', pid);
+        await supabase.from('player_season_stats').update({ [column]: seasonRow[column] + 1 }).eq('player_id', pid);
       }
     }
   }

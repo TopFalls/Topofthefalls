@@ -5,6 +5,8 @@ import { Swords, Trophy, TrendingUp, DollarSign, BarChart3, X } from 'lucide-rea
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
+import { useChallengeCooldown } from '../hooks/useChallengeCooldown';
+import { ChallengeCooldownNotice } from '../components/ChallengeCooldownNotice';
 import { supabase } from '../lib/supabase';
 import { unwrapList } from '../lib/supabaseResult';
 import { PoolBall } from '../components/PoolBall';
@@ -21,6 +23,7 @@ import { LEAGUE } from '../config/league';
 export default function HomePage() {
   const navigate   = useNavigate();
   const { player, profile } = useAuthStore();
+  const cooldown = useChallengeCooldown();
   const { data: rankings = [] } = useRankings();
   const [welcomeDismissed, setWelcomeDismissed] = useState(
     () => localStorage.getItem('toc-welcome-dismissed') === '1'
@@ -314,10 +317,11 @@ export default function HomePage() {
         </GlassCard>
       </motion.div>
 
+      <ChallengeCooldownNotice state={cooldown} />
       {/* Quick actions */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}>
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="primary" size="lg" onClick={() => navigate('/rankings?challenge=1')}>
+          <Button variant="primary" size="lg" disabled={!cooldown.canIssue} onClick={() => navigate('/rankings?challenge=1')}>
             <Swords size={18} /> Challenge
           </Button>
           <Button variant="secondary" size="lg" onClick={() => navigate('/matches')}>

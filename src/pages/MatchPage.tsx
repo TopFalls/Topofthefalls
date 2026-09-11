@@ -355,6 +355,7 @@ export default function MatchPage() {
       qc.invalidateQueries({ queryKey: ['match', id] });
       qc.invalidateQueries({ queryKey: ['rankings'] });
       qc.invalidateQueries({ queryKey: ['matches'] });
+      qc.invalidateQueries({ queryKey: ['cooldowns'] });
       qc.invalidateQueries({ queryKey: ['home-action-matches'] });
       qc.invalidateQueries({ queryKey: ['home-pending-challenges'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });

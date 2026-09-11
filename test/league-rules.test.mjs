@@ -24,6 +24,7 @@ const alignment = readMigration('align_rules_with_league_document');
 const ladderSwap = readMigration('ladder_swap_on_win');
 const createChallenge = read('supabase/functions/create-challenge/index.ts');
 const submitResult = read('supabase/functions/submit-result/index.ts');
+const postMatchCooldowns = read('supabase/functions/_shared/postMatchCooldowns.ts');
 const respondToChallenge = read('supabase/functions/respond-to-challenge/index.ts');
 const addPlayer = read('supabase/functions/add-player/index.ts');
 const rank1Compliance = read('supabase/functions/rank1-compliance/index.ts');
@@ -115,9 +116,9 @@ test('nothing writes rankings.rank1_since any more', () => {
 test('rule 5 — cooldowns follow win-from-below and loss, not just loss', () => {
   // 5a defend -> nothing, 5b win from below -> 24h, 5c lose -> 7 days.
   assert.match(submitResult, /applyPostMatchCooldowns/);
-  assert.match(submitResult, /loss_cooldown_hours/);
-  assert.match(submitResult, /winnerMovedUp && winHours > 0/);
-  assert.match(submitResult, /lossHours > 0.*loserId/s);
+  assert.match(postMatchCooldowns, /CHALLENGE_LOSS_WAIT_HOURS = 168/);
+  assert.match(postMatchCooldowns, /winnerMovedUp && winnerId !== defenderId && winHours > 0/);
+  assert.match(postMatchCooldowns, /loserId !== defenderId/);
   // A defender who holds their spot never gets one.
   assert.match(submitResult, /let winnerMovedUp = false/);
   assert.doesNotMatch(submitResult, /createPostLossCooldown/);
@@ -125,8 +126,8 @@ test('rule 5 — cooldowns follow win-from-below and loss, not just loss', () =>
 
 test('rule 5 defaults match the document: 24 hours up, 7 days after a loss', () => {
   assert.match(alignment, /loss_cooldown_hours integer NOT NULL DEFAULT 168/);
-  assert.match(submitResult, /cooldown_hours \?\? 24/);
-  assert.match(submitResult, /loss_cooldown_hours \?\? 168/);
+  assert.match(postMatchCooldowns, /cooldown_hours \?\? 24/);
+  assert.match(postMatchCooldowns, /CHALLENGE_LOSS_WAIT_HOURS = 168/);
 });
 
 test('rule 5b covers forfeits — declining costs the challenger a cooldown too', () => {
@@ -190,7 +191,8 @@ test('returning: defend or wait 7 days, 24 hours if last on the list', () => {
   assert.match(m, /v_hours := CASE WHEN v_pos IS NOT NULL AND v_pos = v_last THEN 24 ELSE 168 END/);
   assert.match(m, /'reentry', now\(\) \+ make_interval\(hours => v_hours\)/);
   // Defending ends the wait — win or lose. player2 is the challenged side.
-  assert.match(submitResult, /\.eq\('player_id', match\.player2_id\)\s*\n\s*\.eq\('type', 'reentry'\)/);
+  assert.match(submitResult, /applyPostMatchCooldowns\(supabase, loserId, winnerId, winnerMovedUp, match\.player2_id, completedAt\)/);
+  assert.match(postMatchCooldowns, /\.in\('type', \['post_match', 'reentry'\]\)/);
 });
 
 test('every cooldown blocks challenging and none block defending', () => {

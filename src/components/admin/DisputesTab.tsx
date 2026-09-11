@@ -44,6 +44,7 @@ export function DisputesTab() {
       setResolving(null);
       qc.invalidateQueries({ queryKey: ['admin-disputes'] });
       qc.invalidateQueries({ queryKey: ['rankings'] });
+      qc.invalidateQueries({ queryKey: ['cooldowns'] });
     } catch (err) {
       setError(edgeErrorMessage(err, 'Could not resolve this dispute.'));
     } finally {

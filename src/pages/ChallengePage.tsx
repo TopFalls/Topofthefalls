@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, CheckCircle, Swords, Minus, Plus } from 'luc
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
 import { useProtectedPlayers } from '../hooks/useProtectedPlayers';
+import { useChallengeCooldown } from '../hooks/useChallengeCooldown';
+import { ChallengeCooldownNotice } from '../components/ChallengeCooldownNotice';
 import { callEdgeFunction, edgeErrorMessage } from '../lib/edgeFunctions';
 import { PoolBall } from '../components/PoolBall';
 import { GlassCard } from '../components/GlassCard';
@@ -19,6 +21,7 @@ export default function ChallengePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { player } = useAuthStore();
+  const cooldown = useChallengeCooldown();
   const { data: rankings = [], isLoading: rankingsLoading } = useRankings();
   // Who is shielded by a challenge of their own. Empty until it loads, and
   // empty if the call fails, so this only ever stops a challenge on a positive
@@ -49,7 +52,7 @@ export default function ChallengePage() {
   // run to the same decision by the same guards, stopped before it writes. So
   // the warning cannot disagree with what Send actually does.
   useEffect(() => {
-    if (step !== 3 || !id || !discipline) return;
+    if (step !== 3 || !id || !discipline || !cooldown.canIssue) return;
     let cancelled = false;
     callEdgeFunction<{ protection_warning: string | null }>('create-challenge', {
       challenged_player_id: id, discipline, race_length: race, preview: true,
@@ -60,7 +63,7 @@ export default function ChallengePage() {
       // behaviour: no warning.
       .catch(() => { if (!cancelled) setProtectionWarning(null); });
     return () => { cancelled = true; };
-  }, [step, id, discipline, race]);
+  }, [step, id, discipline, race, cooldown.canIssue]);
 
   // Rankings still loading (or the player id is bad) — never render a blank page.
   if (!target) {
@@ -97,7 +100,7 @@ export default function ChallengePage() {
   };
 
   const handleSend = async () => {
-    if (!discipline || raceError || race < LEAGUE.minRace) return;
+    if (!cooldown.canIssue || !discipline || raceError || race < LEAGUE.minRace) return;
     setSending(true);
     setError('');
     try {
@@ -149,6 +152,17 @@ export default function ChallengePage() {
   // open-player rule off the player you just challenged joins the protected set
   // the moment your challenge lands - so checking first would replace "Challenge
   // Sent!" with "they cannot be challenged" within one refetch of succeeding.
+  if (!cooldown.canIssue) {
+    return (
+      <div className="min-h-screen px-4 pt-4">
+        <h1 className="font-[Bebas_Neue] text-3xl">Challenge unavailable</h1>
+        <ChallengeCooldownNotice state={cooldown} />
+        {!player?.is_active && <p className="my-4">You must be an active player to issue a challenge.</p>}
+        <Button variant="secondary" onClick={() => navigate('/challenges')}>View incoming challenges</Button>
+      </div>
+    );
+  }
+
   if (protection) {
     return (
       <div className="min-h-screen px-4 pt-4">
