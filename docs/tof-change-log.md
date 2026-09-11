@@ -94,9 +94,25 @@ Both are now canon in `CLAUDE.md` as well.
 **Files:** `supabase/migrations/20260911120000_a_loss_costs_exactly_one_spot.sql`,
 `supabase/migrations/20260911130000_reversal_refuses_what_it_cannot_undo.sql`,
 `src/config/league.ts`, `CLAUDE.md`, `test/ladder-one-spot.test.mjs`
-**Gates:** build ✓ · tests 174/174 ✓ (22 new — the rotation is modelled in JS
+**Commit:** 8f22e12 (PR #7)
+**Gates:** build ✓ · tests 177/177 ✓ (25 new — the rotation is modelled in JS
 and checked across every legal gap, so the arithmetic is tested rather than the
-SQL eyeballed) · `supabase-migration-reviewer` run twice, once per migration
+SQL eyeballed, and the guard is checked against the recorded positions of every
+live event rather than invented ones) · `supabase-migration-reviewer` run twice,
+once per migration
+
+**Deploy: green, verified both halves.**
+- Migrations applied to `dpbgdisezxlttwrxqanu` in order, rotation first. Both
+  deployed bodies then compared byte-for-byte against the repo files:
+  `cascade_ranking_after_win` md5 `f37e0f9e…`, 1,661 bytes;
+  `reverse_challenge_decline_forfeit` md5 `a65509e7…`, 15,558 bytes. Both match.
+  `SECURITY DEFINER`, `search_path=public` and the `service_role`-only grant all
+  survived the replace.
+- Ladder checked immediately after: 108 players, positions 1 to 108, contiguous,
+  no duplicates, no rows left parked above 1000.
+- Frontend followed by real asset hash: the live bundle rolled from
+  `index-CakGmqzT.js` to `index-DAydX-y0.js`, and the new one contains all three
+  new rules lines.
 
 **Flags:**
 - **History is not repaired.** 14 past results moved a loser two spots instead
@@ -104,13 +120,26 @@ SQL eyeballed) · `supabase-migration-reviewer` run twice, once per migration
   current standings are what he intends. Replaying old results over a ladder
   that has been manually adjusted would be guesswork on top of a correct board.
   The rule applies from here.
-- **One old forfeit can no longer be undone by the button.** Kurt Mueller and
-  Dan Patton, 2026-09-11 02:07 — it was recorded under the swap rule over a
-  two-spot gap, so there is no honest way to reverse it automatically. The
-  button now says so and sends the admin to the Rankings tab. Six other
-  swap-era events were already un-reversible for an unrelated reason.
+- **Twelve old forfeits can no longer be undone by the button, six of which
+  were live hazards.** The count grew during the work: it was 7 when first
+  measured with 1 still exposed, and 12 with 6 exposed by the time the fix
+  shipped, because the hourly sweep kept forfeiting challenges and recording
+  them in the old shape. Each was a two- or three-spot move recorded under the
+  swap rule, so there is no honest way to reverse one automatically. The button
+  now says so and sends the admin to the Rankings tab.
+- **Three forfeits that moved nobody are still reversible, and nearly weren't.**
+  Where the challenger was already ahead of the player who forfeited, the ladder
+  never moves and both players stay on their own spots. The first draft of the
+  guard would have refused all three, because a player who did not move is not
+  one spot below where they were. Caught by checking the guard against live rows
+  rather than trusting the static review, which had no database access.
 - **The two migrations go on together and in order.** `20260911130000` applied
   without `20260911120000` would refuse events the live code is still making.
+- **Unrelated, worth a look later:** two of the live forfeit events record moves
+  outside the legal challenge range — a three-spot move at #103, and a two-spot
+  move at #9 where the top 10 may only challenge one up. Most likely the ladder
+  shifted between the challenge being made and the sweep forfeiting it, rather
+  than the range check failing. Not investigated; not part of this fix.
 - This is a rule Carl had never written down, and the app had no canon for it
   either. It is canon now.
 
