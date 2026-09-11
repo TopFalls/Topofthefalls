@@ -179,6 +179,15 @@ test('the rules text says which way up the list is', () => {
 
 const reversalGuard = migrationMatching('reversal_refuses_what_it_cannot_undo');
 
+// The guard as the SQL states it. The first three conditions are the same gate
+// the restore block uses, so the guard refuses exactly the events that block
+// would have touched. chNew === chPrev means the ladder never moved.
+function guardRefuses({ chPrev, chNew, foPrev, foNew }) {
+  if (chPrev === null || chNew === null || foPrev === null) return false;
+  if (chPrev === chNew) return false;
+  return foNew !== foPrev + 1;
+}
+
 function recordedShapeIsRotation({ chPrev, foPrev, foNew }) {
   void chPrev;
   return foNew === foPrev + 1;
@@ -221,4 +230,49 @@ test('the migration leaves exactly one route through the ranking restore', () =>
   assert.equal(reversalGuard.includes('PERFORM public.cascade_ranking_after_win'), false,
     'the fast path must not survive -- it cannot tell a swap from a rotation');
   assert.match(reversalGuard, /position = position - 1001/);
+});
+
+// ── shapes taken from the live project, not invented ────────────────────────
+//
+// Counted on dpbgdisezxlttwrxqanu before applying: 25 unreversed forfeits
+// carrying positions. 12 have a gap above one and are swap-shaped -- those are
+// the ones the guard must refuse. 3 moved nobody at all. The rest are gap-one
+// events, where a swap and a rotation record the same thing.
+
+test('a forfeit that moved nobody is still reversible', () => {
+  // Live shapes: (96,96,98,98), (12,12,13,13), (10,10,12,12). The challenger
+  // was already ahead of the player who forfeited, so cascade_ranking_after_win
+  // returned early and the ladder never moved. foNew === foPrev, which is NOT
+  // foPrev + 1 -- so without the "challenger actually moved" condition the
+  // guard would refuse all three, and an admin could not undo a clean forfeit.
+  for (const shape of [
+    { chPrev: 96, chNew: 96, foPrev: 98, foNew: 98 },
+    { chPrev: 12, chNew: 12, foPrev: 13, foNew: 13 },
+    { chPrev: 10, chNew: 10, foPrev: 12, foNew: 12 },
+  ]) {
+    assert.equal(guardRefuses(shape), false,
+      `a no-move forfeit at ${shape.chPrev}/${shape.foPrev} must stay reversible`);
+  }
+});
+
+test('every live swap-era event with a gap above one is refused', () => {
+  // The 12 counted live, by their recorded positions.
+  const live = [
+    [37, 35, 35, 37], [73, 71, 71, 73], [101, 99, 99, 101], [44, 42, 42, 44],
+    [37, 35, 35, 37], [40, 38, 38, 40], [45, 43, 43, 45], [73, 71, 71, 73],
+    [80, 78, 78, 80], [9, 7, 7, 9], [103, 100, 100, 103], [69, 67, 67, 69],
+  ];
+  for (const [chPrev, chNew, foPrev, foNew] of live) {
+    assert.equal(guardRefuses({ chPrev, chNew, foPrev, foNew }), true,
+      `swap-era event ${chPrev}->${chNew} / ${foPrev}->${foNew} must be refused`);
+  }
+});
+
+test('a rotation-era event is never refused, at any gap', () => {
+  for (let gap = 1; gap <= 5; gap += 1) {
+    const foPrev = 40;
+    const chPrev = foPrev + gap;
+    assert.equal(guardRefuses({ chPrev, chNew: foPrev, foPrev, foNew: foPrev + 1 }), false,
+      `a rotation at gap ${gap} must stay reversible`);
+  }
 });

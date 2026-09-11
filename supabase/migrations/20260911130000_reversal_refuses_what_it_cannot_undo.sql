@@ -99,7 +99,15 @@ BEGIN
   -- by the ranking check above once positions drift, but one still sitting on
   -- its recorded positions would sail through and be silently mangled. Refuse
   -- and let an admin put it right by hand instead of guessing.
+  -- The first three conditions are the same gate the restore block below uses,
+  -- so the guard refuses exactly the events that block would have touched and
+  -- nothing else. That matters: a forfeit where the challenger was already
+  -- ahead of the forfeiting player moves nobody, records the two players on
+  -- their own spots, and is perfectly reversible. Three such events are live.
+  -- Without "the challenger actually moved" they would all be refused, because
+  -- a player who did not move is not one spot below where they were.
   IF v_event.challenger_previous_position IS NOT NULL
+     AND v_event.challenger_new_position IS NOT NULL
      AND v_event.forfeiting_previous_position IS NOT NULL
      AND v_event.challenger_previous_position IS DISTINCT FROM v_event.challenger_new_position
      AND v_event.forfeiting_new_position IS DISTINCT FROM v_event.forfeiting_previous_position + 1 THEN
