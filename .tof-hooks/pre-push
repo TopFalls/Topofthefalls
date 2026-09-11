@@ -1,0 +1,13 @@
+#!/bin/sh
+# Local guard: production pushes and destinations outside this repository fail.
+root=$(git rev-parse --show-toplevel) || exit 1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/docs/Assert-TOFBoundary.ps1" -PushUrl "$2" || exit 1
+while read local_ref local_oid remote_ref remote_oid
+do
+  case "$remote_ref" in
+    refs/heads/main) echo 'STOP: direct main push blocked; use a reviewed PR with explicit production approval.' >&2; exit 1 ;;
+    refs/heads/*) ;;
+    *) echo 'STOP: non-branch push blocked.' >&2; exit 1 ;;
+  esac
+done
+exit 0

@@ -1,0 +1,12 @@
+{
+  "repository": "TopFalls/Topofthefalls",
+  "remoteHttps": "https://github.com/TopFalls/Topofthefalls.git",
+  "workspace": "C:/Users/cdali/Documents/Codex/TOF-Isolated",
+  "supabaseRef": "dpbgdisezxlttwrxqanu",
+  "supabaseUrl": "https://dpbgdisezxlttwrxqanu.supabase.co",
+  "vercelProjectId": "prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo",
+  "vercelProjectName": "topofthefalls",
+  "vercelTeamId": "team_TiDDLGgPBC8TlMQKmrNcFNl8",
+  "vercelTeamSlug": "tof2",
+  "productionUrls": ["https://topofthefalls.online", "https://www.topofthefalls.online", "https://topofthefalls.vercel.app"]
+}

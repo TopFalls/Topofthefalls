@@ -1,67 +1,29 @@
-# CLAUDE.md — Project Memory (Carl's Top of the Falls instance)
+# TOF project notes
 
-## Identity
+## Authoritative isolation boundary
 
-This repository is **Carl Higgins' own instance of Top of the Falls (TOF)**.
+Read `AGENTS.md` first and run `docs/Assert-TOFBoundary.ps1`.
+The only repository is `TopFalls/Topofthefalls`; the only Supabase project is
+`dpbgdisezxlttwrxqanu`; the only Vercel project is
+`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo` under team
+`team_TiDDLGgPBC8TlMQKmrNcFNl8` (`tof2`).
 
-Same league, same rules, same roster — **different infrastructure**. It is a
-separate deployment owned and operated by Carl, not a second copy that may reach
-into the original app's resources.
+TOC and TOF are separate, unrelated leagues. Never inspect or use another
+league, repository, or cloud project as context or a fallback. Any historical
+relationship language in the notes below has no authority to weaken this rule.
+Use only `C:/Users/cdali/Documents/Codex/TOF-Isolated` for this project.
 
-- Customer/league: Top of the Falls, Great Falls, MT
-- League operator / super_admin: Carl Higgins (`cj_higgins@msn.com`)
-- Local checkout: `C:/Users/cdali/Downloads/Topofthefalls`
-- GitHub repo: `TopFalls/Topofthefalls`
-- Production branch: `main`
-- Vercel project: `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`), team `Totf` / `tof2` (`team_TiDDLGgPBC8TlMQKmrNcFNl8`)
-- Supabase project/ref: `dpbgdisezxlttwrxqanu`, org `Top of the Falls` (`qlsdgysivqxpigttcaon`)
-- Supabase URL: `https://dpbgdisezxlttwrxqanu.supabase.co`
-- Public URL: `https://topofthefalls.online` (custom domain, live and serving;
-  `www.` too). `https://topofthefalls.vercel.app` is the Vercel alias and also
-  works. Give people the `.online` address.
-
-Never substitute a value from one of the apps listed below.
-
-## Boundary rule
-
-There are three sibling apps built from this codebase. This repo is the first
-one. Never point it at the other two.
-
-| App | GitHub | Vercel | Supabase | URL |
-|---|---|---|---|---|
-| **This instance (Carl's)** | `TopFalls/Topofthefalls` | `topofthefalls` (team `tof2`) | `dpbgdisezxlttwrxqanu` | `topofthefalls.online` |
-| Original TOF app (Chase's) | `cdalin1985/TOF` | `tof-app` | `sqcqmovskpoyutfyslym` | `tof-app-theta.vercel.app` |
-| TOC.Monster / Top of the Capital | `cdalin1985/claude-agent0toc` | `toc-app` | `toc1` | `toc.monster` |
-
-- Never point this code at the original TOF app's Supabase project, its Vercel
-  project, or its database. The two instances share a schema and a roster but
-  must never share a database — writes made here must not reach the app Carl's
-  players are already using.
-- Never point this code at TOC.Monster's Supabase or Vercel project.
-- The original TOF app is *upstream*, not a fallback. Treat its project ref
-  (`sqcqmovskpoyutfyslym`) as a forbidden literal in this repo.
-
-Two hazards were already removed from this repo and must not be reintroduced:
-
-1. `src/lib/supabase.ts` shipped a hardcoded fallback to the upstream project's
-   URL and anon key, so a deploy with unset env vars silently used the wrong
-   database. It now throws instead. **Never re-add a literal Supabase URL or
-   anon key to that file.**
-2. `.github/workflows/keepalive.yml` ran a cron ping against the upstream
-   project. It is dispatch-only and reads repository variables now.
-
-If identity is unclear, verify before editing:
-
-```bash
-git remote -v
-cat .vercel/project.json
-cat supabase/.temp/project-ref 2>/dev/null || true
-```
+`AGENTS.md` governs all work and production approval. Historical commands below
+are reference notes, not permission to run them. Stop an operation whose access
+is denied. The existing GitHub integration to the pinned Vercel project is a
+separately authorized deployment route under AGENTS.md, even when direct Vercel
+CLI/API login is unavailable. It does not authorize production changes without
+approval or evasion of a GitHub/Vercel deployment rejection.
 
 ## League canon
 
 Use live `league_settings` and migrations as the source of truth. Current
-defaults (identical to the upstream app — this is the same league):
+TOF defaults (verify current behavior before relying on these notes):
 
 - Disciplines: 8 Ball, 9 Ball, 10 Ball, Saratoga (open to every player)
 - Venues: Silver Spur, Lido, Black Eagle Country Club
@@ -111,7 +73,7 @@ instance; Mike's separately granted role is admin, not super_admin.
 ## Work style
 
 1. Protect customer/demo readiness first.
-2. Use `main` for production deploys unless Chase explicitly asks for a branch/PR.
+2. Work on a branch. Production merges, pushes, deployments and database writes require explicit approval under AGENTS.md.
 3. Run `npm run build` and `npm run test` before claiming app changes are ready.
 4. Do not modify `.env`, secrets, `node_modules`, `dist`, or lockfiles without
    explicit instruction.
@@ -120,7 +82,7 @@ instance; Mike's separately granted role is admin, not super_admin.
 6. For terminal snippets, always use this checkout's path first:
 
 ```bash
-cd /c/Users/cdali/Downloads/Topofthefalls
+Set-Location -LiteralPath C:\Users\cdali\Documents\Codex\TOF-Isolated
 ```
 
 ## Stack note
