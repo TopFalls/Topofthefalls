@@ -41,6 +41,132 @@ One entry per request. Keep it short — the detail is in the commit.
 
 ---
 
+## 2026-09-11 — A loss costs exactly one spot, and the list says which way is up
+
+**Carl asked:** "A player can never lose more than one spot for a loss. But a
+lesser ranked player challenging a higher ranked player gets the spot of that
+player that was higher, and the higher player always only moves down one. They
+can never move down less than one. And by down, I mean in a worse position. We
+need to make clear verbiage that moving down on the list isn't lower in number
+ranking, it's higher, and moving up on the list is towards number one."
+
+**The app was swapping the two players.** The winner took the loser's spot and
+the loser took the winner's. When they are next to each other that is the same
+thing as the rule, which is why it went unnoticed for so long. When they are
+not, the loser fell exactly as far as the winner climbed — and spots 11 and
+below may challenge **two** up, so a two-spot fall was a legal, routine result.
+
+**Measured before writing a line.** Of 38 forfeits that moved the ladder, 24
+dropped the loser one spot and **14 dropped them two**. Every one of the 14 was
+a challenge spanning more than one position. This is separate from yesterday's
+forfeit loop and was hiding underneath it: the loop explained why the ladder
+churned, this explains why individual results were wrong.
+
+**Shipped:** `cascade_ranking_after_win` now rotates instead of swapping.
+
+```
+before   #43 Dan    #44 Jo     #45 Kurt
+Kurt challenges Dan two up and wins
+after    #43 Kurt   #44 Dan    #45 Jo
+```
+
+The winner takes the spot they challenged, the loser moves down one, and anyone
+the winner passed moves down one as well. It is the single place the ladder
+moves after a win — played matches, admin-settled disputes and forfeits all call
+it — so one function covers all three. A successful defence still moves nobody.
+
+**The reversal did need a change, and the first draft of this entry said it
+didn't.** The migration review caught it. `reverse_challenge_decline_forfeit`
+has to invert whatever the forfeit recorded, and the rotation changes the shape
+of that recording: a swap-era event stored the loser on the challenger's old
+spot, a rotation-era event stores them one below their own. Those agree at a gap
+of one and diverge above it, and the function could not tell them apart — its
+fast path keyed on the swap pattern, so a swap-era two-spot event would have
+been undone as a rotation, dropping the challenger a spot instead of returning
+them to their own and pulling down an untouched player in between.
+
+Seven such events are on the live project. Six are already refused because the
+positions have drifted from Mike's reorders. One — Kurt Mueller and Dan Patton,
+recorded at 02:07 that morning — was still exactly on its recorded positions and
+would have gone through. So `reverse_challenge_decline_forfeit` now refuses any
+event whose recorded move was not a one-spot drop, naming the date the rule
+changed and pointing the admin at the Rankings tab, and the fast path is gone so
+the block shift is the only route. Refusing is the right answer: the alternative
+is silently rearranging three people on a guess.
+
+**A failed challenge moves nobody, and the first draft of this got that wrong.**
+Carl, reading it back: *"There's times where a loss doesn't change the list at
+all, and that's when a player lower on the list challenging a higher ranked
+player loses. Nothing changes in that situation."* The code was already right —
+`cascade_ranking_after_win` returns early when the winner is already ahead — but
+the wording said a loss "never costs less than one spot", which is only true of
+a defender beaten from below. A challenger who loses stays exactly where they
+are; the defender does not climb for holding the spot either. Corrected in the
+rules text, the migration, the canon and the test names, and the case now has
+its own test across every legal gap. Losing does still carry a cooldown — defend
+or wait seven days — but that is a wait, not a position.
+
+**The verbiage.** The rules text now opens with direction, because every rule
+under it depends on which way the list runs and "higher" pulls both ways: *"Up
+the list means towards #1, and a smaller number. Down the list means away from
+#1, and a bigger number."* Then the two outcomes, in plain terms: win and you
+take the spot, everyone you passed drops one; lose and nothing changes at all.
+Both are now canon in `CLAUDE.md` as well.
+
+**Files:** `supabase/migrations/20260911120000_a_loss_costs_exactly_one_spot.sql`,
+`supabase/migrations/20260911130000_reversal_refuses_what_it_cannot_undo.sql`,
+`src/config/league.ts`, `CLAUDE.md`, `test/ladder-one-spot.test.mjs`
+**Commit:** 8f22e12 (PR #7)
+**Gates:** build ✓ · tests 177/177 ✓ (25 new — the rotation is modelled in JS
+and checked across every legal gap, so the arithmetic is tested rather than the
+SQL eyeballed, and the guard is checked against the recorded positions of every
+live event rather than invented ones) · `supabase-migration-reviewer` run twice,
+once per migration
+
+**Deploy: green, verified both halves.**
+- Migrations applied to `dpbgdisezxlttwrxqanu` in order, rotation first. Both
+  deployed bodies then compared byte-for-byte against the repo files:
+  `cascade_ranking_after_win` md5 `f37e0f9e…`, 1,661 bytes;
+  `reverse_challenge_decline_forfeit` md5 `a65509e7…`, 15,558 bytes. Both match.
+  `SECURITY DEFINER`, `search_path=public` and the `service_role`-only grant all
+  survived the replace.
+- Ladder checked immediately after: 108 players, positions 1 to 108, contiguous,
+  no duplicates, no rows left parked above 1000.
+- Frontend followed by real asset hash: the live bundle rolled from
+  `index-CakGmqzT.js` to `index-DAydX-y0.js`, and the new one contains all three
+  new rules lines.
+
+**Flags:**
+- **History is not repaired.** 14 past results moved a loser two spots instead
+  of one, but Mike has hand-corrected the ladder five times since, so the
+  current standings are what he intends. Replaying old results over a ladder
+  that has been manually adjusted would be guesswork on top of a correct board.
+  The rule applies from here.
+- **Twelve old forfeits can no longer be undone by the button, six of which
+  were live hazards.** The count grew during the work: it was 7 when first
+  measured with 1 still exposed, and 12 with 6 exposed by the time the fix
+  shipped, because the hourly sweep kept forfeiting challenges and recording
+  them in the old shape. Each was a two- or three-spot move recorded under the
+  swap rule, so there is no honest way to reverse one automatically. The button
+  now says so and sends the admin to the Rankings tab.
+- **Three forfeits that moved nobody are still reversible, and nearly weren't.**
+  Where the challenger was already ahead of the player who forfeited, the ladder
+  never moves and both players stay on their own spots. The first draft of the
+  guard would have refused all three, because a player who did not move is not
+  one spot below where they were. Caught by checking the guard against live rows
+  rather than trusting the static review, which had no database access.
+- **The two migrations go on together and in order.** `20260911130000` applied
+  without `20260911120000` would refuse events the live code is still making.
+- **Unrelated, worth a look later:** two of the live forfeit events record moves
+  outside the legal challenge range — a three-spot move at #103, and a two-spot
+  move at #9 where the top 10 may only challenge one up. Most likely the ladder
+  shifted between the challenge being made and the sweep forfeiting it, rather
+  than the range check failing. Not investigated; not part of this fix.
+- This is a rule Carl had never written down, and the app had no canon for it
+  either. It is canon now.
+
+---
+
 ## 2026-09-10 — The ladder loop: a reversed forfeit no longer comes back an hour later
 
 **Carl asked:** "Yesterday a player at 98th position challenged the 97th position
