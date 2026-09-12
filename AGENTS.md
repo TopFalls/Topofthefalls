@@ -94,6 +94,10 @@ dashboard/API access or Supabase access, and does not approve every release.
 
 ## Everyday editing workflow
 
+For repository onboarding, local environment setup, broken link diagnosis, or a
+first local run, follow `.agents/skills/tof-bootstrap/SKILL.md` after reading this
+file. The skill does not authorize relinking or any production change.
+
 1. State the intended user-visible result in one sentence. For routine,
    reversible implementation choices, use judgment and proceed. Ask only when
    missing information changes the intended behavior, league rule, or scope.

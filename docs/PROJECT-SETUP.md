@@ -9,6 +9,11 @@ In Codex, use **Add project** and choose the folder above. The app tool interfac
 available during setup could list projects but could not register a new folder.
 Do not select the older Downloads checkout for this dedicated workspace.
 
+For future setup checks or repairs, use the repository-local Codex skill at
+`.agents/skills/tof-bootstrap/SKILL.md`. It verifies the pinned resources before
+dependencies or the development server and does not provision, relink, migrate,
+seed, or deploy as part of bootstrap.
+
 ## Pinned resources
 
 - GitHub: `TopFalls/Topofthefalls`
@@ -21,7 +26,8 @@ Do not select the older Downloads checkout for this dedicated workspace.
 ## Verified
 
 The repository remote and GitHub API identify the exact allowed repository.
-The public production domain and Vercel alias respond successfully. The live
+The public production domain responds successfully, and the Vercel alias now
+permanently redirects to the canonical `www` domain. The live
 Supabase JavaScript bundle names `dpbgdisezxlttwrxqanu.supabase.co`.
 The Vercel IDs match the original checkout's local link and the PR #7 deployment
 comment. These are identity checks, not proof of authenticated cloud access.
@@ -42,10 +48,11 @@ approval for the concrete production release, merge and verify live behavior.
 The direct-main push block remains active. Git-based deployment does not grant
 access to Vercel billing, membership, secrets, or Supabase management. Stop on
 an actual GitHub write denial or Vercel deployment rejection.
-Authenticated Supabase management access has not been established in this new
-checkout; its local project ref is pinned and its live frontend target verified.
-Do not copy credentials from another project. A future Supabase MCP connection
-must be scoped to `project_ref=dpbgdisezxlttwrxqanu`, initially read-only.
+Authenticated Supabase CLI access to the pinned project was established and used
+to deploy the cooldown Edge Functions on 2026-09-12. This does not authorize
+unscoped project enumeration or future production changes. Do not copy credentials
+from another project. A Supabase MCP connection must remain scoped to
+`project_ref=dpbgdisezxlttwrxqanu`, initially read-only.
 
 ## Guards and limits
 
