@@ -32,4 +32,12 @@ npm-build-log.txt
 .agents/skills/*
 !.agents/skills/tof-bootstrap/
 !.agents/skills/tof-bootstrap/SKILL.md
+!.agents/skills/tof-release/
+!.agents/skills/tof-release/SKILL.md
+!.agents/skills/tof-rule-change/
+!.agents/skills/tof-rule-change/SKILL.md
+!.agents/skills/tof-production-qa/
+!.agents/skills/tof-production-qa/SKILL.md
+!.agents/skills/tof-incident-diagnostics/
+!.agents/skills/tof-incident-diagnostics/SKILL.md
 .codex/
