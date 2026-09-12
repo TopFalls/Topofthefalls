@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase';
 import { callEdgeFunction, edgeErrorMessage } from '../lib/edgeFunctions';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
+import { useChallengeCooldown } from '../hooks/useChallengeCooldown';
+import { ChallengeCooldownNotice } from '../components/ChallengeCooldownNotice';
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
@@ -225,6 +227,7 @@ export default function ChallengesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [tab, setTab] = useState<'incoming' | 'outgoing' | 'history'>('incoming');
+  const cooldown = useChallengeCooldown();
   const [responding, setResponding] = useState<Challenge | null>(null);
 
   const { data: challenges = [], isLoading, isError, refetch } = usePlayerChallenges(player?.id);
@@ -267,6 +270,7 @@ export default function ChallengesPage() {
   return (
     <div className="min-h-screen px-4 pt-8 pb-4">
       <h1 className="font-[Bebas_Neue] text-5xl tracking-wide text-[#E8E2D6] mb-5">Challenges</h1>
+      <ChallengeCooldownNotice state={cooldown} />
 
       <div className="flex gap-1 mb-5 bg-[#1A1A1A] rounded-xl p-1">
         {([
@@ -303,10 +307,10 @@ export default function ChallengesPage() {
           title={tab === 'incoming' ? 'No Incoming Challenges' : tab === 'outgoing' ? 'No Active Challenges' : 'No History Yet'}
           message={
             tab === 'incoming' ? 'No one has challenged you yet.'
-            : tab === 'outgoing' ? "You haven't sent any challenges. Step up!"
+            : tab === 'outgoing' ? (cooldown.canIssue ? "You haven't sent any challenges. Step up!" : 'You have no outgoing challenges. You can still accept incoming challenges during your wait.')
             : 'Your completed challenges will appear here.'
           }
-          action={tab !== 'history' ? (
+          action={tab !== 'history' && cooldown.canIssue ? (
             <Button variant="primary" onClick={() => navigate('/rankings?challenge=1')}>
               Find an Opponent
             </Button>

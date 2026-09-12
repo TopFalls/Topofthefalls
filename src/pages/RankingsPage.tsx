@@ -4,6 +4,8 @@ import { Search, X, Swords } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRankings } from '../hooks/useRankings';
 import { useProtectedPlayers } from '../hooks/useProtectedPlayers';
+import { useChallengeCooldown } from '../hooks/useChallengeCooldown';
+import { ChallengeCooldownNotice } from '../components/ChallengeCooldownNotice';
 import { useAuthStore } from '../stores/authStore';
 import { Avatar } from '../components/Avatar';
 import { GuestBar } from '../components/GuestBar';
@@ -33,6 +35,7 @@ function RankCard({
   index,
   challengeMode,
   isGuest,
+  canIssue,
 }: {
   rp: RankedPlayer;
   myPosition: number | null;
@@ -42,6 +45,7 @@ function RankCard({
   index: number;
   challengeMode: boolean;
   isGuest: boolean;
+  canIssue: boolean;
 }) {
   const navigate = useNavigate();
   const pos       = rp.ranking.position;
@@ -55,7 +59,7 @@ function RankCard({
   // the button must not be offered. See src/hooks/useProtectedPlayers.ts.
   const protection = protectedPlayers.get(rp.player.id) ?? null;
   const eligibility = challengeEligibilityWithProtection(positional, protection);
-  const eligible  = eligibility.ok && !isMe;
+  const eligible  = canIssue && eligibility.ok && !isMe;
   // Protection is worth saying out loud wherever the Challenge button would
   // otherwise have stood — a row that quietly loses its button explains
   // nothing. The positional reasons stay in challenge mode, where they were.
@@ -169,6 +173,7 @@ export default function RankingsPage() {
   const { data: rankings = [], isLoading, isError, refetch } = useRankings();
   const { player, session } = useAuthStore();
   const isGuest = !session;
+  const cooldown = useChallengeCooldown();
   // Guests cannot challenge anyone, so never ask the database who is shielded.
   const { data: protectedPlayers } = useProtectedPlayers(!isGuest);
   const [search, setSearch]   = useState('');
@@ -194,6 +199,7 @@ export default function RankingsPage() {
     let list = rankings;
     if (search) list = list.filter((r) => r.player.full_name.toLowerCase().includes(search.toLowerCase()));
     if (tab === 'near' && myPosition !== null) {
+      if (!cooldown.canIssue) return [];
       // This tab is labelled "Can Challenge", so it has to mean it. A player
       // shielded by a challenge of their own is not someone you can challenge,
       // and listing them here would contradict the badge their own row draws.
@@ -206,7 +212,7 @@ export default function RankingsPage() {
       );
     }
     return list;
-  }, [rankings, search, tab, myPosition, player?.id, activeRanks, protectedPlayers]);
+  }, [rankings, search, tab, myPosition, player?.id, activeRanks, protectedPlayers, cooldown.canIssue]);
 
   return (
     <div className={`min-h-screen px-4 pb-4 ${isGuest ? 'pt-3' : 'pt-8'}`}>
@@ -227,6 +233,7 @@ export default function RankingsPage() {
         </p>
       </div>
 
+      <ChallengeCooldownNotice state={cooldown} />
       {/* Search */}
       <div className="relative mb-3">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
@@ -273,8 +280,8 @@ export default function RankingsPage() {
           ? <QueryError onRetry={() => refetch()} />
           : filtered.length === 0
           ? <EmptyState
-              title="No Players Found"
-              message={search ? `No one matches "${search}"` : 'The table is empty. Check back soon!'}
+              title={tab === 'near' && !cooldown.canIssue ? 'Challenges unavailable' : 'No Players Found'}
+              message={tab === 'near' && !cooldown.canIssue ? 'You can still view all players and respond to incoming challenges.' : search ? `No one matches "${search}"` : 'No eligible players to show.'}
               icon="🎱"
             />
           : filtered.map((rp, i) => (
@@ -288,6 +295,7 @@ export default function RankingsPage() {
                 index={i}
                 challengeMode={challengeMode}
                 isGuest={isGuest}
+                canIssue={cooldown.canIssue}
               />
             ))
         }

@@ -87,7 +87,7 @@ export const LEAGUE = {
     'If both players offer times but cannot agree, the match is a wash and the challenging player sits for 24 hours. The challenged player may challenge up immediately if no challenge is waiting on their spot.',
     'If you defend your spot, include your next challenge with your result to lock it in immediately — otherwise you are open to challenges from behind until you do.',
     'If the lower seed wins, including by forfeit, they wait 24 hours before challenging up.',
-    'If you lose, you must defend or wait 7 days before challenging up.',
+    'After a loss, you cannot issue another challenge for 7 days. Winning a defending match clears this wait; losing a defending match restarts the full 7 days. You can still receive and accept challenges during the wait. Accepting alone does not end it.',
     'Players may go inactive anytime. Inactive more than 30 days drops you two spots for every 30 days inactive. On return you must defend or wait 7 days before challenging up (the last player on the list waits 24 hours). Inactive players are reviewed every 30 days and may be removed at admin discretion after 90 days of no engagement.',
     'Questions? Contact Carl Higgins. Top of the Falls has final say on all rules. Rules subject to change.',
   ],

@@ -8,6 +8,8 @@ import { unwrapList } from '../lib/supabaseResult';
 import { useAuthStore } from '../stores/authStore';
 import { useRankings } from '../hooks/useRankings';
 import { useProtectedPlayers } from '../hooks/useProtectedPlayers';
+import { useChallengeCooldown } from '../hooks/useChallengeCooldown';
+import { ChallengeCooldownNotice } from '../components/ChallengeCooldownNotice';
 import { Avatar } from '../components/Avatar';
 import { GlassCard } from '../components/GlassCard';
 import { InactivePlayerBanner } from '../components/InactivePlayerBanner';
@@ -37,6 +39,7 @@ export default function PlayerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { player: myPlayer, profile } = useAuthStore();
+  const cooldown = useChallengeCooldown();
   const { data: rankings = [] } = useRankings();
   const [discTab, setDiscTab]         = useState<Discipline>('8 Ball');
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('All');
@@ -65,7 +68,7 @@ export default function PlayerPage() {
   // whole sentence, instead of offering a button that leads to a refusal.
   const { data: protectedPlayers } = useProtectedPlayers(!!myPlayer);
   const protection = (id && protectedPlayers?.get(id)) || null;
-  const eligible = inRange && !protection;
+  const eligible = cooldown.canIssue && inRange && !protection;
 
   // When an admin resets stats with "hide past matches", player_season_stats
   // carries a stats_reset_at stamp. Match History must respect it, or the
@@ -134,6 +137,7 @@ export default function PlayerPage() {
         <ChevronLeft size={18} /> Back
       </button>
 
+      <ChallengeCooldownNotice state={cooldown} />
       {/* Hero card */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         <GlassCard className="p-6 text-center relative overflow-hidden mb-4">

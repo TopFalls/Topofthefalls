@@ -151,7 +151,7 @@ serve(async (req) => {
     //   reentry     back from inactive: defend, or wait
     //   wash        rule 4, the challenger sits after a wash
     const now = new Date().toISOString();
-    const { data: myCooldown } = await supabase
+    const { data: myCooldown, error: cooldownError } = await supabase
       .from('cooldowns')
       .select('type, expires_at')
       .eq('player_id', challenger.id)
@@ -159,6 +159,7 @@ serve(async (req) => {
       .order('expires_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (cooldownError) return new Response(JSON.stringify({ error: 'Could not check your challenge wait. Please try again.' }), { status: 503, headers: corsHeaders });
     if (myCooldown) {
       const until = new Date(myCooldown.expires_at).toLocaleString();
       const message = myCooldown.type === 'reentry'

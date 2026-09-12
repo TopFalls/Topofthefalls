@@ -29,7 +29,7 @@ const RULE_FIELDS: Array<{ key: keyof SettingsFormState; label: string; unit: st
   { key: 'challenge_response_hours', label: 'Challenge response window', unit: 'hours to accept or decline' },
   { key: 'match_play_days', label: 'Match play window', unit: 'days after acceptance' },
   { key: 'cooldown_hours', label: 'Cooldown after moving up', unit: 'hours — winning from below' },
-  { key: 'loss_cooldown_hours', label: 'Cooldown after a loss', unit: 'hours before challenging up' },
+  { key: 'loss_cooldown_hours', label: 'Decline-forfeit cooldown', unit: 'hours; a match loss starts 7 days, cleared by winning a defence' },
 ];
 
 type SettingsFieldProps = {

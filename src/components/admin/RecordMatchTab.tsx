@@ -92,6 +92,7 @@ export function RecordMatchTab() {
       setChallengerId(''); setChallengedId('');
       qc.invalidateQueries({ queryKey: ['rankings'] });
       qc.invalidateQueries({ queryKey: ['matches'] });
+      qc.invalidateQueries({ queryKey: ['cooldowns'] });
       qc.invalidateQueries({ queryKey: ['activity-feed'] });
     } catch (err) {
       setError(edgeErrorMessage(err, 'Could not record the match.'));

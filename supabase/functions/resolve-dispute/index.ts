@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { applyPostMatchCooldowns } from '../_shared/postMatchCooldowns.ts';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 
@@ -104,13 +105,14 @@ serve(async (req) => {
     const loser_id = winner_id === match.player1_id ? match.player2_id : match.player1_id;
 
     // Update match to resolved
+    const completedAt = new Date().toISOString();
     const matchUpdate: Record<string, unknown> = {
       status: 'resolved',
       winner_id,
       loser_id,
       player1_score: final_score_player1,
       player2_score: final_score_player2,
-      completed_at: new Date().toISOString(),
+      completed_at: completedAt,
     };
     if (explicitPlayer1Payment) matchUpdate.player1_payment_method = explicitPlayer1Payment;
     if (explicitPlayer2Payment) matchUpdate.player2_payment_method = explicitPlayer2Payment;
@@ -136,7 +138,8 @@ serve(async (req) => {
       supabase.from('rankings').select('position').eq('player_id', loser_id).single(),
     ]);
     let winnerCurrentPosition = winnerRank.data?.position ?? null;
-    if (winnerRank.data && loserRank.data && winnerRank.data.position > loserRank.data.position) {
+    const winnerMovedUp = !!(winnerRank.data && loserRank.data && winnerRank.data.position > loserRank.data.position);
+    if (winnerMovedUp) {
       const { error: cascadeError } = await supabase.rpc('cascade_ranking_after_win', {
         p_winner_id: winner_id,
         p_loser_id: loser_id,
@@ -150,6 +153,8 @@ serve(async (req) => {
         .single();
       winnerCurrentPosition = refreshedWinnerRank?.position ?? winnerCurrentPosition;
     }
+
+    await applyPostMatchCooldowns(supabase, loser_id, winner_id, winnerMovedUp, match.player2_id, completedAt);
 
     // Update stats
     const [ws, ls] = await Promise.all([

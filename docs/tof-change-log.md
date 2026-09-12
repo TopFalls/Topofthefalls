@@ -1,5 +1,27 @@
 # TOF change log — what the editing room shipped
 
+## 2026-09-11 — Challenge-loss wait (prepared; not deployed)
+
+**Requested:** Losing a challenge up blocks issuing challenges for seven days,
+or until the player wins a defence. Losing a defence restarts the full seven days.
+Incoming challenges remain available.
+**Prepared:** Challenge controls and direct links check the player's wait; errors
+block issuing safely. Normal and admin-resolved results share the 168-hour loss
+rule. Winning a defence clears previous post-match waits; losing a defence starts
+a fresh 168-hour wait. Acceptance alone does not clear it. The separate reentry
+rule still clears on completing a defence; existing wash waits remain in force.
+**Validation:** 165 tests pass; frontend TypeScript/build and Deno checks for all
+three affected Edge Functions pass. Local browser
+fixtures verify blocked issuing, incoming response/Accept availability, expiry,
+defence removal, and read-error behavior. No production records were changed.
+**Release:** Deploy the three affected Edge Functions to the pinned Supabase
+project, then release the frontend through the existing pinned Vercel integration.
+Production approval and authenticated Supabase deployment access remain needed.
+**Limits:** No historical-loss backfill. Match completion still uses the existing
+multi-step server workflow; these changes do not make the entire result atomic.
+
+---
+
 Every change Carl requests goes through `.claude/skills/tof-edit/SKILL.md` and
 lands here. Newest first. This exists so Chase can stay out of the request loop
 and still audit it afterward in one pass.
