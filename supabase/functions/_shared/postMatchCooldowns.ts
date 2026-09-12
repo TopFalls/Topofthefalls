@@ -18,11 +18,8 @@ export async function applyPostMatchCooldowns(
   const at = (hours: number) => new Date(Date.parse(completedAt) + hours * 3600_000).toISOString();
   const rows: { player_id: string; type: string; expires_at: string }[] = [];
 
-  // Losing an issued challenge costs exactly seven days. A completed defence
-  // clears the defender's previous wait regardless of who won that match.
-  if (loserId !== defenderId) {
-    rows.push({ player_id: loserId, type: 'post_match', expires_at: at(CHALLENGE_LOSS_WAIT_HOURS) });
-  }
+  // Any match loss starts a fresh seven-day wait, including a lost defence.
+  rows.push({ player_id: loserId, type: 'post_match', expires_at: at(CHALLENGE_LOSS_WAIT_HOURS) });
   if (winnerMovedUp && winnerId !== defenderId && winHours > 0) {
     rows.push({ player_id: winnerId, type: 'post_match', expires_at: at(winHours) });
   }
@@ -31,7 +28,10 @@ export async function applyPostMatchCooldowns(
     if (error) throw error;
   }
   const { error } = await supabase.from('cooldowns').delete()
-    .eq('player_id', defenderId).in('type', ['post_match', 'reentry'])
+    .eq('player_id', defenderId)
+    // Only a winning defence clears post-match waits. The separate returning-
+    // player rule still clears reentry on completing a defence, win or lose.
+    .in('type', winnerId === defenderId ? ['post_match', 'reentry'] : ['reentry'])
     .lte('created_at', completedAt);
   if (error) throw error;
 }

@@ -10,7 +10,8 @@ export function ChallengeCooldownNotice({ state }: { state: ReturnType<typeof us
         <>
           <strong className="block mb-1">Challenge wait</strong>
           You cannot issue a challenge before {new Date(state.cooldown.expires_at).toLocaleString()}.
-          {state.cooldown.type !== 'wash' && ' A completed defence can end a post-loss or return-from-inactive wait early.'}
+          {state.cooldown.type === 'post_match' && ' Winning a defence clears this wait. Losing a defence restarts the full 7 days.'}
+          {state.cooldown.type === 'reentry' && ' Completing a defence ends the return-from-inactive wait, but a loss starts a new 7-day wait.'}
           {' You can still receive and accept challenges.'}
         </>
       ) : null}

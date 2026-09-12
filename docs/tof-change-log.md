@@ -3,11 +3,13 @@
 ## 2026-09-11 — Challenge-loss wait (prepared; not deployed)
 
 **Requested:** Losing a challenge up blocks issuing challenges for seven days,
-or until the player completes a defence. Incoming challenges remain available.
+or until the player wins a defence. Losing a defence restarts the full seven days.
+Incoming challenges remain available.
 **Prepared:** Challenge controls and direct links check the player's wait; errors
 block issuing safely. Normal and admin-resolved results share the 168-hour loss
-rule. Completing a defence clears previous post-match/reentry waits, win or lose;
-acceptance alone does not. Existing wash waits remain in force.
+rule. Winning a defence clears previous post-match waits; losing a defence starts
+a fresh 168-hour wait. Acceptance alone does not clear it. The separate reentry
+rule still clears on completing a defence; existing wash waits remain in force.
 **Validation:** 165 tests pass; frontend TypeScript/build and Deno checks for all
 three affected Edge Functions pass. Local browser
 fixtures verify blocked issuing, incoming response/Accept availability, expiry,

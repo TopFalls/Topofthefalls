@@ -18,7 +18,7 @@ test('the wait ends at the expiry boundary, without an extra day', () => {
   assert.equal(mayIssueChallenge(true, true, false, activeChallengeCooldown([wait], expires)), true);
 });
 
-test('removing a wait after defence restores eligibility without reloading', () => {
+test('removing a wait after a winning defence restores eligibility without reloading', () => {
   assert.equal(mayIssueChallenge(true, true, false, activeChallengeCooldown([], lossAt + 3600_000)), true);
 });
 
@@ -78,15 +78,23 @@ test('completed challenger loss writes an exact 168-hour wait', async () => {
 });
 
 for (const defenderWins of [true, false]) {
-  test(`completed defence clears prior post-loss/reentry waits when defender ${defenderWins ? 'wins' : 'loses'}`, async () => {
+  test(`defence ${defenderWins ? 'win clears the post-loss wait' : 'loss restarts the full seven days'}`, async () => {
     const prior = ['post_match', 'reentry', 'wash'].map((type) => ({
       player_id: 'defender', type, created_at: new Date(lossAt - 3600_000).toISOString(), expires_at: new Date(expires).toISOString(),
     }));
     const db = fakeDatabase(prior);
-    await applyPostMatchCooldowns(db, defenderWins ? 'challenger' : 'defender', defenderWins ? 'defender' : 'challenger', !defenderWins, 'defender', new Date(lossAt).toISOString());
-    assert.deepEqual(db.rows.filter((row) => row.player_id === 'defender').map((row) => row.type), ['wash']);
+    const defenceAt = lossAt + 3 * 24 * 3600_000;
+    await applyPostMatchCooldowns(db, defenderWins ? 'challenger' : 'defender', defenderWins ? 'defender' : 'challenger', !defenderWins, 'defender', new Date(defenceAt).toISOString());
+    const defenderRows = db.rows.filter((row) => row.player_id === 'defender');
+    assert.deepEqual(defenderRows.map((row) => row.type), defenderWins ? ['wash'] : ['post_match', 'wash', 'post_match']);
+    if (!defenderWins) {
+      const cooldown = activeChallengeCooldown(defenderRows, defenceAt);
+      assert.equal(Date.parse(cooldown.expires_at), defenceAt + 168 * 3600_000);
+      assert.equal(mayIssueChallenge(true, true, false, activeChallengeCooldown(defenderRows, expires)), false);
+      assert.equal(mayIssueChallenge(true, true, false, activeChallengeCooldown(defenderRows, defenceAt + 168 * 3600_000)), true);
+    }
     assert.equal(db.rows.find((row) => row.player_id === 'challenger').expires_at,
-      new Date(lossAt + (defenderWins ? 168 : 24) * 3600_000).toISOString());
+      new Date(defenceAt + (defenderWins ? 168 : 24) * 3600_000).toISOString());
   });
 }
 

@@ -114,11 +114,11 @@ test('nothing writes rankings.rank1_since any more', () => {
 // --- Rule 5: cooldowns -----------------------------------------------------
 
 test('rule 5 — cooldowns follow win-from-below and loss, not just loss', () => {
-  // 5a defend -> nothing, 5b win from below -> 24h, 5c lose -> 7 days.
+  // Winning a defence clears the wait; winning from below waits 24h; any loss waits 7 days.
   assert.match(submitResult, /applyPostMatchCooldowns/);
   assert.match(postMatchCooldowns, /CHALLENGE_LOSS_WAIT_HOURS = 168/);
   assert.match(postMatchCooldowns, /winnerMovedUp && winnerId !== defenderId && winHours > 0/);
-  assert.match(postMatchCooldowns, /loserId !== defenderId/);
+  assert.match(postMatchCooldowns, /player_id: loserId, type: 'post_match', expires_at: at\(CHALLENGE_LOSS_WAIT_HOURS\)/);
   // A defender who holds their spot never gets one.
   assert.match(submitResult, /let winnerMovedUp = false/);
   assert.doesNotMatch(submitResult, /createPostLossCooldown/);
@@ -192,7 +192,7 @@ test('returning: defend or wait 7 days, 24 hours if last on the list', () => {
   assert.match(m, /'reentry', now\(\) \+ make_interval\(hours => v_hours\)/);
   // Defending ends the wait — win or lose. player2 is the challenged side.
   assert.match(submitResult, /applyPostMatchCooldowns\(supabase, loserId, winnerId, winnerMovedUp, match\.player2_id, completedAt\)/);
-  assert.match(postMatchCooldowns, /\.in\('type', \['post_match', 'reentry'\]\)/);
+  assert.match(postMatchCooldowns, /\.in\('type', winnerId === defenderId \? \['post_match', 'reentry'\] : \['reentry'\]\)/);
 });
 
 test('every cooldown blocks challenging and none block defending', () => {

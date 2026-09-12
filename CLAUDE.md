@@ -24,10 +24,10 @@ approval or evasion of a GitHub/Vercel deployment rejection.
 
 ### Requested challenge-loss rule (2026-09-11; pending release)
 
-An issued challenge that ends in a loss blocks issuing another challenge for
-exactly 168 hours from the confirmed result. Receiving and accepting challenges
-remain available. Completing a defending match clears the prior post-match wait;
-the current implementation interprets defence as completion, win or lose.
+A loss blocks issuing another challenge for exactly 168 hours from the confirmed
+result. Receiving and accepting challenges remain available. Winning a defending
+match clears the prior post-match wait. Losing a defending match starts a fresh
+168 hours from that result, even if the player was already waiting.
 Acceptance alone does not clear it. Wash waits remain separate.
 The frontend and `create-challenge`, `submit-result`, and `resolve-dispute`
 Edge Functions must be released and verified separately. A Vercel preview alone
