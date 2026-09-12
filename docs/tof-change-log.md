@@ -1,6 +1,6 @@
 # TOF change log — what the editing room shipped
 
-## 2026-09-11 — Challenge-loss wait (prepared; not deployed)
+## 2026-09-12 — Challenge-loss wait released
 
 **Requested:** Losing a challenge up blocks issuing challenges for seven days,
 or until the player wins a defence. Losing a defence restarts the full seven days.
@@ -10,13 +10,15 @@ block issuing safely. Normal and admin-resolved results share the 168-hour loss
 rule. Winning a defence clears previous post-match waits; losing a defence starts
 a fresh 168-hour wait. Acceptance alone does not clear it. The separate reentry
 rule still clears on completing a defence; existing wash waits remain in force.
-**Validation:** 165 tests pass; frontend TypeScript/build and Deno checks for all
-three affected Edge Functions pass. Local browser
+**Validation:** 187 tests pass on the merged code; frontend TypeScript/build and
+Deno checks for all three affected Edge Functions pass. Local browser
 fixtures verify blocked issuing, incoming response/Accept availability, expiry,
 defence removal, and read-error behavior. No production records were changed.
-**Release:** Deploy the three affected Edge Functions to the pinned Supabase
-project, then release the frontend through the existing pinned Vercel integration.
-Production approval and authenticated Supabase deployment access remain needed.
+**Release:** PR #9 merged as `6e0948257bfce4a31a045530f89d2aa5d0da477a`.
+The pinned Supabase project reports `create-challenge` v8, `submit-result` v7,
+and `resolve-dispute` v3 active with JWT verification. Vercel reported the exact
+merge commit deployed successfully, and all three production addresses served
+the same asset containing the winning-defence and losing-defence messages.
 **Limits:** No historical-loss backfill. Match completion still uses the existing
 multi-step server workflow; these changes do not make the entire result atomic.
 

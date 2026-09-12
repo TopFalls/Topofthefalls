@@ -22,16 +22,16 @@ approval or evasion of a GitHub/Vercel deployment rejection.
 
 ## League canon
 
-### Requested challenge-loss rule (2026-09-11; pending release)
+### Challenge-loss rule (released 2026-09-12)
 
 A loss blocks issuing another challenge for exactly 168 hours from the confirmed
 result. Receiving and accepting challenges remain available. Winning a defending
 match clears the prior post-match wait. Losing a defending match starts a fresh
 168 hours from that result, even if the player was already waiting.
 Acceptance alone does not clear it. Wash waits remain separate.
-The frontend and `create-challenge`, `submit-result`, and `resolve-dispute`
-Edge Functions must be released and verified separately. A Vercel preview alone
-does not establish that this rule is live.
+Released in PR #9 at production commit `6e0948257bfce4a31a045530f89d2aa5d0da477a`.
+The pinned Supabase project runs `create-challenge` v8, `submit-result` v7, and
+`resolve-dispute` v3. The production Vercel asset set was verified separately.
 
 Use live `league_settings` and migrations as the source of truth. Current
 TOF defaults (verify current behavior before relying on these notes):
