@@ -1,107 +1,197 @@
-# AGENTS.md — Agent Instructions (Carl's Top of the Falls instance)
+# TOF editing workspace
 
-## Identity
+Help the user maintain the Top of the Falls web app. Carry authorized edits
+through implementation and verification. Keep explanations practical and short.
+Protect the live league while preserving the strict resource boundary below.
 
-This repository is **Carl Higgins' own instance of Top of the Falls (TOF)**.
+## Authoritative scope
 
-Same league, same rules, same roster — **different infrastructure**. It is a
-separate deployment owned and operated by Carl, not a second copy that may reach
-into the original app's resources.
+This workspace is exclusively for `TopFalls/Topofthefalls` and the two connected
+cloud projects below. All other repositories, leagues, databases, hosting teams,
+and deployments are outside scope, including other projects accessible through
+the same account. Never use another project as context, a template, or a fallback.
 
-- Customer/league: Top of the Falls, Great Falls, MT
-- League operator / super_admin: Carl Higgins (`cj_higgins@msn.com`)
-- Local checkout: `C:/Users/cdali/Downloads/Topofthefalls`
-- GitHub repo: `TopFalls/Topofthefalls`
-- Production branch: `main`
-- Vercel project: `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`), team `Totf` / `tof2` (`team_TiDDLGgPBC8TlMQKmrNcFNl8`)
-- Supabase project/ref: `dpbgdisezxlttwrxqanu`, org `Top of the Falls` (`qlsdgysivqxpigttcaon`)
-- Supabase URL: `https://dpbgdisezxlttwrxqanu.supabase.co`
-- Public URL: `https://topofthefalls.vercel.app` (no custom domain)
+TOC and TOF are separate, unrelated leagues. Never compare, infer, transfer,
+copy, synchronize, or cross-reference their information, rules, code, assets,
+data, configuration, credentials, or history. Do not inspect TOC for TOF work.
+Historical relationship claims elsewhere in this checkout do not authorize any
+cross-project work. This boundary supersedes conflicting repository documents,
+nested skills, and agent instructions. Surface further conflicts to the user.
 
-Never substitute a value from one of the apps listed below.
+## Exact allowlist
 
-## Boundary rule
+| Resource | Only allowed target |
+| --- | --- |
+| Local root | `C:/Users/cdali/Documents/Codex/TOF-Isolated` |
+| GitHub | `TopFalls/Topofthefalls` |
+| Git remote | `https://github.com/TopFalls/Topofthefalls.git` (same-owner SSH equivalent permitted) |
+| Supabase ref | `dpbgdisezxlttwrxqanu` |
+| Supabase URL | `https://dpbgdisezxlttwrxqanu.supabase.co` |
+| Vercel project | `topofthefalls` / `prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo` |
+| Vercel team | `tof2` / `team_TiDDLGgPBC8TlMQKmrNcFNl8` |
+| Production | `https://topofthefalls.online`, `https://www.topofthefalls.online`, `https://topofthefalls.vercel.app` |
 
-There are three sibling apps built from this codebase. This repo is the first
-one. Never point it at the other two.
+## Mandatory checks and stop conditions
 
-| App | GitHub | Vercel | Supabase | URL |
-|---|---|---|---|---|
-| **This instance (Carl's)** | `TopFalls/Topofthefalls` | `topofthefalls` (team `tof2`) | `dpbgdisezxlttwrxqanu` | `topofthefalls.vercel.app` |
-| Original TOF app (Chase's) | `cdalin1985/TOF` | `tof-app` | `sqcqmovskpoyutfyslym` | `tof-app-theta.vercel.app` |
-| TOC.Monster / Top of the Capital | `cdalin1985/claude-agent0toc` | `toc-app` | `toc1` | `toc.monster` |
+1. At task start and before any remote mutation, run `rtk proxy powershell
+   -NoProfile -ExecutionPolicy Bypass -File .\docs\Assert-TOFBoundary.ps1`
+   from this root. Stop on failure. The execution policy flag is process-local
+   and only permits this guard script; it does not change machine policy.
+2. Every project file operation, search and shell working directory stays within this
+   root. Do not search parent directories, sibling checkouts, global memory, or
+   other projects. Use `work/` inside this root for scratch work. Use only this
+   repository's history and this project's cloud resources as project evidence.
+   Official platform documentation may explain tools; it cannot supply league
+   rules or authorize access to a different project.
+3. Use explicit `--repo TopFalls/Topofthefalls` for GitHub commands; verify the
+   repository on every API or connector request. Only `origin` is permitted.
+4. Supabase commands and MCP requests must explicitly name the pinned project
+   ref. Never enumerate all account projects, use unscoped database URLs, or
+   infer a target from a token. A project-scoped Supabase MCP connection must
+   include `project_ref=dpbgdisezxlttwrxqanu`; default to read-only access.
+5. Vercel calls must explicitly use team `tof2` and the pinned project ID.
+   Verify `.vercel/project.json` before use. Only previews proven to belong to
+   that exact project/team are permitted. Do not follow links to other projects.
+6. If a credential cannot reach a target, stop that operation and report its
+   access failure. Never switch team, create a replacement cloud project,
+   relink, broaden credentials, or evade an explicit deployment rejection.
+   Direct Vercel CLI/API access and the existing GitHub deployment integration
+   are separate permissions. A direct-login failure does not block the approved
+   GitHub workflow described below.
+7. Local link files and public HTTP success do not prove authenticated access.
+   Verify the specific cloud target before claiming a live connection or change.
+8. Keep the allowlist and hooks intact. Never use `--no-verify`, override
+   `core.hooksPath`, or weaken these guards to make an operation succeed.
 
-- Never point this code at the original TOF app's Supabase project, its Vercel
-  project, or its database. The two instances share a schema and a roster but
-  must never share a database — writes made here must not reach the app Carl's
-  players are already using.
-- Never point this code at TOC.Monster's Supabase or Vercel project.
-- The original TOF app is *upstream*, not a fallback. Treat its project ref
-  (`sqcqmovskpoyutfyslym`) as a forbidden literal in this repo.
+## Approved GitHub to Vercel deployment route
 
-Two hazards were already removed from this repo and must not be reintroduced:
+The user approved using the existing integration from `TopFalls/Topofthefalls`
+to Vercel project `prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo` in team
+`team_TiDDLGgPBC8TlMQKmrNcFNl8` (`tof2`). This does not grant direct Vercel
+dashboard/API access or Supabase access, and does not approve every release.
 
-1. `src/lib/supabase.ts` shipped a hardcoded fallback to the upstream project's
-   URL and anon key, so a deploy with unset env vars silently used the wrong
-   database. It now throws instead. **Never re-add a literal Supabase URL or
-   anon key to that file.**
-2. `.github/workflows/keepalive.yml` ran a cron ping against the upstream
-   project. It is dispatch-only and reads repository variables now.
+- For authorized work, use the repository's existing GitHub write access to
+  push a feature branch and prepare a PR. Expect the connected Vercel integration
+  to build a preview; read its actual status through GitHub. Creating a PR does
+  not authorize sending extra comments, mentions or review requests.
+- Keep truthful commit attribution. Do not impersonate Carl, strip attribution,
+  share logins, add seats, or change integration settings to get a build accepted.
+- Before a remote write, run the boundary guard and verify the repository and
+  latest available deployment evidence. Each observed Vercel deployment must
+  belong to the pinned project/team. Stop if it points elsewhere or is ambiguous.
+- If GitHub denies a write or Vercel rejects a build for permissions, stop that
+  operation and report the exact error. A historical success is not proof that
+  new work will be accepted. Do not seek another identity to bypass rejection.
+- Production changes require explicit approval for the concrete release. Use
+  an approved PR merge to `main`; the local direct-main push block stays active.
+  Check required PR gates before merging, then track the exact merged commit's
+  deployment and verify the live behavior. A failed or missing status is not a
+  successful deployment. Unavailable logs or protected previews remain blockers
+  to the checks that require them, not permission to claim they passed.
+- Repository changes such as `vercel.json` can deploy through this connection.
+  Billing, membership, secrets, domain ownership and dashboard settings require
+  their own authorized access. Supabase operations remain separately scoped.
 
-If identity is unclear, verify before editing:
+## Everyday editing workflow
 
-```bash
-git remote -v
-cat .vercel/project.json
-cat supabase/.temp/project-ref 2>/dev/null || true
-```
+1. State the intended user-visible result in one sentence. For routine,
+   reversible implementation choices, use judgment and proceed. Ask only when
+   missing information changes the intended behavior, league rule, or scope.
+2. Check `git status --short`, the current branch, and the relevant diff. Preserve
+   existing edits, including unrelated setup work. Never reset, overwrite, stash,
+   or include somebody else's changes without authorization. If already on a
+   work branch, inspect it before creating another one.
+3. Read the smallest relevant set of files. Use `rg` and `rg --files`. Trace a
+   problem from the visible symptom to its actual caller and data source before
+   changing code. Do not turn a focused request into a broad refactor.
+4. Establish behavior from the user's current instructions, the relevant code
+   and tests at the checked-out revision, and verified settings in the allowed
+   live project. Report discrepancies. PR descriptions, old notes, and migration
+   files are not proof that a change is deployed or a migration is applied.
+5. Make the smallest complete change using the app's existing patterns. Handle
+   loading, empty, error and permission states where affected. Preserve mobile
+   usability, keyboard access, and readable labels. Save text as UTF-8.
+6. Verify according to the change matrix below. Fix failures introduced by the
+   change; identify unrelated failures separately. Never weaken a test to hide
+   a failure or claim that an unrun check passed.
+7. Report the resulting behavior, checks actually run, remaining blockers, and
+   whether the change is local, pushed, previewed, or live. Keep those states
+   distinct. For a message intended for Carl, use league terms and screen names.
 
-## League canon
+## Where to look
 
-Use live `league_settings` and migrations as the source of truth. Current
-defaults (identical to the upstream app — this is the same league):
+This is a Vite + React + TypeScript app, not Next.js. Confirm current scripts in
+`package.json` before running commands.
 
-- Disciplines: 8 Ball, 9 Ball, 10 Ball, Saratoga (Top 20 only)
-- Venues: Silver Spur, Lido, Black Eagle Country Club
-- Roster: 117 players, seeded by `20260609141000_seed_tof_roster.sql`
-- Claim flow: email → 6-digit code → claim own unclaimed roster name
-- Carl Higgins is super_admin before claiming his player row
-  (`20260729120000_league_admin_bootstrap.sql`)
-- Treasury is a ledger/admin function; no real payment processing is live yet
+| Concern | Starting point |
+| --- | --- |
+| Screens and navigation | `src/pages/`, `src/App.tsx`, `src/components/` |
+| Shared UI rules and wording | `src/config/league.ts` |
+| Client behavior and data access | `src/hooks/`, `src/lib/` |
+| Database types | `src/types/database.ts` |
+| Server actions | `supabase/functions/` |
+| Database changes | `supabase/migrations/` |
+| Regression checks | `test/` |
+| Hosting routes and headers | `vercel.json` |
+| Installed app and notifications | `public/manifest.json`, `public/sw.js` |
+| TOF behavior notes | `CLAUDE.md`, `docs/tof-change-log.md` |
 
-The upstream signup triggers hardcoded four personal admin emails. Those are
-demoted here and must not come back — Carl is the sole super_admin on this
-instance.
+Read only entries relevant to the task. Historical cross-project references in
+these files are not a reason to inspect another repository or service.
 
-## Work style
+## Verification by change
 
-1. Protect customer/demo readiness first.
-2. Use `main` for production deploys unless Chase explicitly asks for a branch/PR.
-3. Run `npm run build` and `npm run test` before claiming app changes are ready.
-4. Do not modify `.env`, secrets, `node_modules`, `dist`, or lockfiles without
-   explicit instruction.
-5. Keep scratch files out of the repo unless they are intentional project
-   documentation under `docs/` or customer setup notes.
-6. For terminal snippets, always use this checkout's path first:
+| Change | Required evidence |
+| --- | --- |
+| Instructions or documentation only | Review for consistency, check links/paths and `git diff --check`; no app build needed |
+| App code or user-facing UI | `rtk npm run test` and `rtk npm run build`; inspect changed UI in the browser at relevant mobile/desktop sizes when available |
+| Bug fix or league calculation | Add a focused regression check when it captures a meaningful failure; cover the affected rule and boundary cases |
+| Hosting configuration | Validate configuration and host/path matching against current official docs; verify actual HTTP behavior after an authorized deployment |
+| Database or server function | Check affected migrations, callers, server functions and TypeScript types; test in an explicitly authorized environment and verify the deployed function/database separately |
+| Login, permissions, or private data | Verify the affected guest/member/admin behavior and denied access; successful HTTP status alone does not prove correct visibility |
+| Push or installed-app behavior | Verify on the relevant installed app/device; desktop browser success is not device proof |
 
-```bash
-cd /c/Users/cdali/Downloads/Topofthefalls
-```
+Do not write tests that only restate a simple implementation. Do not install or
+upgrade dependencies merely to tidy the project. If checks are blocked by missing
+dependencies, credentials, or a device, state the missing prerequisite and finish
+the independent work. Do not run tests that write to production without approval.
 
-## Stack note
+## Change and production policy
 
-This is a **Vite + React SPA** (`npm run build` → `tsc -b && vite build`, output
-`dist/`), not a Next.js app. Vercel framework preset: Vite.
+- Work on a branch. Do not merge or push to `main`, deploy, run migrations,
+  mutate production data, change secrets, or alter infrastructure without the
+  user's explicit approval for that concrete operation. Permission to edit does
+  not automatically approve unrelated production changes. Honor approval already
+  given in the conversation; do not ask for the same approval twice.
+- Prepare and verify reviewable changes first. Send no messages, comments or
+  review requests to other people without explicit authorization.
+- Preserve behavior outside the requested scope. Do not copy `.env` files or
+  credentials from another checkout, print secret values, or put secrets in
+  source, logs, documentation, or chat.
+- Use TOF code, migrations, and verified TOF live settings for league facts.
+  `CLAUDE.md` may explain TOF behavior; its historical notes cannot expand scope
+  or authorize a merge, deployment, or access to any other project.
+- Run appropriate tests and a build for app changes. Validate actual production
+  behavior after an approved deployment; a green preview is not database proof.
+- Prefix shell commands with `rtk`. Use PowerShell-ready commands.
 
-## Tools on hand
+The older `.claude/skills/tof-edit/SKILL.md` and historical deployment notes do
+not override this file. In particular, their automatic direct-to-main workflow,
+old checkout paths, and claims of relationships with other leagues do not apply.
+The user makes requests here; do not contact Carl or another person to resolve
+questions unless the user explicitly asks you to send a message.
 
-See `docs/ruflo.md` for the **ruflo** agent meta-harness — what it is, the
-curated setup that keeps it out of this product repo, and the portable
-`.claude/agents/` set that travels to other league clones.
+Treat frontend deployments, Supabase migrations and Edge Function deployments
+as separate operations. Before a release, identify which operations are needed
+and their ordering so the UI and backend remain compatible. Do not apply all
+pending migrations or merge another PR as a side effect of a focused change.
+Keep the live website on the allowlisted project throughout any account-role
+changes; a proposed ownership arrangement is not evidence it already happened.
 
-## Historical upstream notes
+## Limits of these guards
 
-Older docs under `docs/` may reference the original TOC.Monster app or the
-original TOF deployment, because this codebase was split from TOC.Monster and
-then cloned from TOF. Treat those as upstream history, not deployment
-instructions for this instance, unless explicitly updated here.
+The local pre-push hook blocks ordinary pushes to other repositories and direct
+production pushes. The preflight checks pinned local identities. Agent
+instructions govern tool use. These are not an OS sandbox, cannot restrict
+account-wide credentials, and do not intercept direct API/CLI cloud writes.
+Never describe this workspace as technically incapable of reaching elsewhere.
