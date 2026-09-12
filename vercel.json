@@ -1,6 +1,14 @@
 {
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        { "type": "host", "value": "topofthefalls.vercel.app" }
+      ],
+      "destination": "https://www.topofthefalls.online/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         { "type": "host", "value": "topofthefalls.vercel.app" }
