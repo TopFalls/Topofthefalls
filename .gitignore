@@ -21,10 +21,10 @@ npm-build-log.txt
 .mcp.json
 *.bak
 
-# Generated mirrors of .claude/agents and .claude/skills for other agent
-# runtimes. docs/ruflo.md is explicit that .claude/agents/ and .claude/skills/
-# are the ONLY committed Claude Code footprint, so these exports do not belong
-# in the product repo — they are regenerated, not authored.
+# Ignore generated agent runtime files by default. Repository-authored Codex
+# skills may be committed through narrow exceptions; never unignore all of
+# .agents/. Add another explicit skill path only when that skill is intentionally
+# maintained as project source.
 .agents/
 !.agents/
 .agents/*

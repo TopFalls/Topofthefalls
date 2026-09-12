@@ -179,6 +179,25 @@ the independent work. Do not run tests that write to production without approval
   behavior after an approved deployment; a green preview is not database proof.
 - Prefix shell commands with `rtk`. Use PowerShell-ready commands.
 
+## Repository-authored agent files and RTK
+
+- Treat `.agents/` as generated or private runtime state by default. Keep the
+  directory ignored and allowlist only intentionally authored, reviewed project
+  skills. The current exception is `.agents/skills/tof-bootstrap/SKILL.md`.
+- Do not commit agent caches, transcripts, local state, credentials, MCP
+  configuration, generated mirrors, or temporary outputs. If a second authored
+  skill is added, extend `.gitignore` for that exact skill path; do not unignore
+  the entire `.agents` directory.
+- Use `rtk` for routine commands where concise output improves readability. Check
+  the command's exit code even when RTK summarizes the result as `ok`.
+- Use `rtk proxy` when exact output matters: errors, test failures, commit hashes,
+  deployment responses, permission checks, HTTP headers, or other production
+  evidence. If an RTK summary omits evidence needed for a claim, repeat the
+  read-only check through `rtk proxy` rather than guessing.
+- RTK does not replace the TOF boundary guard, tests, provider scoping, or live
+  verification. Do not bypass RTK or weaken a guard merely to make a command
+  succeed; diagnose a discrepancy and report it.
+
 The older `.claude/skills/tof-edit/SKILL.md` and historical deployment notes do
 not override this file. In particular, their automatic direct-to-main workflow,
 old checkout paths, and claims of relationships with other leagues do not apply.
