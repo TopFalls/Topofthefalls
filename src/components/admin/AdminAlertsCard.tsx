@@ -19,10 +19,14 @@ type AdminAlert = {
   headline: string;
   detail: string | null;
   player_id: string | null;
+  challenge_id?: string | null;
+  deadline_at?: string | null;
   created_at: string;
 };
 
 const ALERT_ICON: Record<string, string> = {
+  challenge_response_deadline: '⏰',
+  challenge_play_deadline: '⏰',
   inactive_drift: '⬇️',
   inactive_90_day: '⏳',
   wash_requested: '🤝',
@@ -37,7 +41,7 @@ export function useOpenAdminAlerts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_alerts')
-        .select('id, alert_type, headline, detail, player_id, created_at')
+        .select('*')
         .is('acknowledged_at', null)
         .order('created_at', { ascending: false })
         .limit(30);
@@ -53,17 +57,22 @@ export function useOpenAdminAlerts() {
   });
 }
 
-export function AdminAlertsCard() {
+export function AdminAlertsCard({ onViewChallenges }: { onViewChallenges?: () => void }) {
   const qc = useQueryClient();
-  const { data: alerts = [] } = useOpenAdminAlerts();
+  const { data: alerts = [], isError, refetch } = useOpenAdminAlerts();
   const [overrideBusy, setOverrideBusy] = React.useState<string | null>(null);
   const [overrideError, setOverrideError] = React.useState('');
 
   async function dismiss(id: string) {
-    await supabase
+    setOverrideError('');
+    const { error } = await supabase
       .from('admin_alerts')
       .update({ acknowledged_at: new Date().toISOString() })
       .eq('id', id);
+    if (error) {
+      setOverrideError('Could not mark this alert done. Please try again.');
+      return;
+    }
     qc.invalidateQueries({ queryKey: ['admin-alerts'] });
   }
 
@@ -91,6 +100,12 @@ export function AdminAlertsCard() {
     qc.invalidateQueries({ queryKey: ['cooldowns'] });
   }
 
+  if (isError) return (
+    <div role="alert" className="p-4 mb-3 text-sm text-[#F59E0B]">
+      Admin alerts could not be loaded.{' '}
+      <button className="underline" onClick={() => refetch()}>Try again</button>
+    </div>
+  );
   if (alerts.length === 0) return null;
 
   return (
@@ -114,6 +129,14 @@ export function AdminAlertsCard() {
               <div className="text-sm font-[Barlow] font-medium text-[#E8E2D6]">{alert.headline}</div>
               {alert.detail && (
                 <div className="text-xs text-[#9CA3AF] font-[Barlow] mt-0.5">{alert.detail}</div>
+              )}
+              {alert.challenge_id && onViewChallenges && (
+                <button
+                  onClick={onViewChallenges}
+                  className="mt-2 min-h-11 px-3 rounded-lg text-xs text-[#F59E0B] border border-[#F59E0B]/30"
+                >
+                  View challenges
+                </button>
               )}
               <div className="text-[10px] text-[#6B7280] font-[Barlow] mt-1">
                 {formatDateTime(alert.created_at)}

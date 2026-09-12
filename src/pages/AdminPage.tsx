@@ -72,7 +72,7 @@ export default function AdminPage() {
       </button>
 
       {/* Inactivity drift, 90-day reviews and wash requests land here */}
-      <AdminAlertsCard />
+      <AdminAlertsCard onViewChallenges={() => setTab('challenges')} />
 
       {/* Tabs — horizontal scroll */}
       <div className="flex overflow-x-auto gap-1 mb-5 bg-[#1A1A1A] rounded-xl p-1" style={{ scrollbarWidth: 'none' }}>
