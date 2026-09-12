@@ -26,4 +26,10 @@ npm-build-log.txt
 # are the ONLY committed Claude Code footprint, so these exports do not belong
 # in the product repo — they are regenerated, not authored.
 .agents/
+!.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/tof-bootstrap/
+!.agents/skills/tof-bootstrap/SKILL.md
 .codex/
