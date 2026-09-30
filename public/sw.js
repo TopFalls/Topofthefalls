@@ -6,8 +6,8 @@ self.addEventListener('push', (event) => {
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       data: { url: data.url ?? '/' },
-      tag: 'totf',
-      renotify: true,
+      // No tag: each notification stands alone. A shared tag made a new one
+      // replace the last, so three followed matches showed only the latest.
     })
   );
 });

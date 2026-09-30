@@ -1,5 +1,35 @@
 # TOF change log — what the editing room shipped
 
+## 2026-09-30 — Visitors browse read-only; follow players; push for followers (prepared, not live)
+
+**Requested:** Someone signed in without a claimed name should just see Home,
+The List and Activity read-only, not be sent to the claim screen. Let them follow
+players and get notifications, free of charge.
+**Prepared:** Signed-in visitors stay on the three read-only screens and use the
+same guest views, so they see nothing a signed-out visitor cannot. The top bar
+shows "Claim name" and "Sign out". Claiming is optional, not forced. The List has
+a bell on each row to follow a player, and offers to turn on alerts after the
+first follow. When a match is confirmed, everyone following either player gets a
+push worded like the public activity feed. The two players in the match are
+skipped, since they already get their own. Notifications no longer replace one
+another (they shared a single tag). Devices are stored per account per phone, so a
+second phone no longer overwrites the first, and visitors can register one.
+**Notifications cost:** Push is free per message. No text messages are sent for
+notifications. Text is used only for the sign-in code (paid; see the phone
+sign-in entry above).
+**Validation:** Build and 196 tests pass; lint shows only the 3 errors already on
+main. Not run in a browser or on a phone.
+**Not live until:** the migration `20260930130000_follow_players_and_push_devices.sql`
+is applied, then the `submit-result`, `create-challenge` and `send-push` functions
+are redeployed (they now share one sender), then the frontend is merged. Old
+players' alerts keep working throughout because the older table is still read.
+**Not built:** an in-app "following" feed. The public activity feed does not carry
+which player an event is about, and adding that is a deliberate widening of what
+guests can read. Only confirmed match results notify followers so far. Admin-settled
+results, challenges and rank changes do not yet.
+
+---
+
 ## 2026-09-30 — Phone-number sign-in (prepared, not live)
 
 **Requested:** Sign in with a phone number instead of email. Existing players

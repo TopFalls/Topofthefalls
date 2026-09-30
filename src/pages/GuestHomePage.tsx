@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
 import { useRankings } from '../hooks/useRankings';
 import { GuestBar } from '../components/GuestBar';
@@ -23,6 +24,7 @@ import type { PublicActivityFeedItem } from '../types/database';
  */
 export default function GuestHomePage() {
   const navigate = useNavigate();
+  const signedIn = useAuthStore((s) => !!s.session);
   const { data: rankings = [], isLoading: rankingsLoading } = useRankings();
 
   const { data: feed = [] } = useQuery<PublicActivityFeedItem[]>({
@@ -163,8 +165,8 @@ export default function GuestHomePage() {
         {/* How the league works */}
         <LeagueRulesCard />
 
-        {/* The way in */}
-        <GlassCard className="p-5 text-center">
+        {/* The way in. Someone already signed in has been through it. */}
+        {!signedIn && <GlassCard className="p-5 text-center">
           <h2 className="font-[Bebas_Neue] text-2xl tracking-wide text-[#E8E2D6] mb-1">
             Already on the list?
           </h2>
@@ -183,7 +185,7 @@ export default function GuestHomePage() {
             Not on the list? Talk to {LEAGUE.contact} at any of the{' '}
             {LEAGUE.sponsorBars.length} league bars.
           </p>
-        </GlassCard>
+        </GlassCard>}
       </div>
     </div>
   );
