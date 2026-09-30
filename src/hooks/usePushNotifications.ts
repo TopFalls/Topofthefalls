@@ -12,7 +12,8 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 }
 
 export function usePushNotifications() {
-  const { player } = useAuthStore();
+  const { player, session } = useAuthStore();
+  const userId = session?.user.id ?? null;
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -24,15 +25,15 @@ export function usePushNotifications() {
   }, []);
 
   useEffect(() => {
-    if (!supported || !player) return;
+    if (!supported || !userId) return;
     navigator.serviceWorker.ready.then(async (reg) => {
       const existing = await reg.pushManager.getSubscription();
       setSubscribed(!!existing);
     });
-  }, [supported, player]);
+  }, [supported, userId]);
 
   const subscribe = async () => {
-    if (!player || !supported || !VAPID_PUBLIC_KEY) return;
+    if (!userId || !supported || !VAPID_PUBLIC_KEY) return;
     setLoading(true);
     try {
       const perm = await Notification.requestPermission();
@@ -45,10 +46,22 @@ export function usePushNotifications() {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
 
-      await supabase.from('push_subscriptions').upsert(
-        { player_id: player.id, subscription: sub.toJSON() },
-        { onConflict: 'player_id' }
+      const json = sub.toJSON();
+      // One row per phone, for any signed-in account, so visitors who follow
+      // players can be reached too.
+      const { error } = await supabase.from('push_devices').upsert(
+        { profile_id: userId, endpoint: sub.endpoint, subscription: json },
+        { onConflict: 'profile_id,endpoint' }
       );
+      if (error) throw error;
+      // Players keep the older row as well, so a function that has not been
+      // redeployed yet still reaches them.
+      if (player) {
+        await supabase.from('push_subscriptions').upsert(
+          { player_id: player.id, subscription: json },
+          { onConflict: 'player_id' }
+        );
+      }
       setSubscribed(true);
     } finally {
       setLoading(false);
@@ -56,13 +69,16 @@ export function usePushNotifications() {
   };
 
   const unsubscribe = async () => {
-    if (!player) return;
+    if (!userId) return;
     setLoading(true);
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      if (sub) await sub.unsubscribe();
-      await supabase.from('push_subscriptions').delete().eq('player_id', player.id);
+      if (sub) {
+        await supabase.from('push_devices').delete().eq('profile_id', userId).eq('endpoint', sub.endpoint);
+        await sub.unsubscribe();
+      }
+      if (player) await supabase.from('push_subscriptions').delete().eq('player_id', player.id);
       setSubscribed(false);
     } finally {
       setLoading(false);

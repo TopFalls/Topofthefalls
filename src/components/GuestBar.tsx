@@ -1,6 +1,8 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LEAGUE } from '../config/league';
+import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../stores/authStore';
 
 const LINKS = [
   { label: 'Home',     path: '/' },
@@ -11,13 +13,14 @@ const LINKS = [
 /**
  * Top bar for someone who is just looking around.
  *
- * Guests have no bottom nav — that is built for a player with challenges and
+ * Visitors have no bottom nav — that is built for a player with challenges and
  * alerts — so this is how they move between the three screens they can see,
  * and it keeps the way in visible on every one of them.
  */
 export const GuestBar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const signedIn = useAuthStore((s) => !!s.session);
 
   return (
     <div className="sticky top-0 z-40 -mx-4 px-4 py-2.5 mb-4 backdrop-blur-xl border-b border-white/5 bg-[rgba(10,8,8,0.88)]">
@@ -45,13 +48,32 @@ export const GuestBar: React.FC = () => {
           })}
         </div>
 
-        <button
-          onClick={() => navigate('/login')}
-          className="ml-auto shrink-0 px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-semibold text-white"
-          style={{ background: 'var(--toc-theme-accent)' }}
-        >
-          Sign in
-        </button>
+        {signedIn ? (
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {/* Signed in but no roster name yet. Claiming is optional here. */}
+            <button
+              onClick={() => navigate('/claim')}
+              className="px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-semibold text-white"
+              style={{ background: 'var(--toc-theme-accent)' }}
+            >
+              Claim name
+            </button>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="px-1 py-1.5 text-xs font-[Barlow] text-[#9CA3AF]"
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate('/login')}
+            className="ml-auto shrink-0 px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-semibold text-white"
+            style={{ background: 'var(--toc-theme-accent)' }}
+          >
+            Sign in
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,24 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import webpush from 'npm:web-push';
+import { sendPush } from '../_shared/sendPush.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// deno-lint-ignore-file no-explicit-any
-async function sendPush(supabase: any, playerId: string, title: string, body: string, url: string): Promise<void> {
-  try {
-    const { data: row } = await supabase.from('push_subscriptions').select('subscription').eq('player_id', playerId).single();
-    if (!row?.subscription) return;
-    webpush.setVapidDetails(`mailto:${Deno.env.get('VAPID_SUBJECT')}`, Deno.env.get('VAPID_PUBLIC_KEY') ?? '', Deno.env.get('VAPID_PRIVATE_KEY') ?? '');
-    await webpush.sendNotification(row.subscription, JSON.stringify({ title, body, url }));
-  } catch {
-    // Push delivery should never break challenge creation.
-  }
-}
 
 // Positions here are *active ranks* — a player's place among active players,
 // with inactive players skipped. See the caller.

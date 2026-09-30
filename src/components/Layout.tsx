@@ -20,7 +20,7 @@ const NAV_ROUTES = ['/', '/rankings', '/matches', '/notifications', '/settings',
 const showsNav = (path: string) =>
   NAV_ROUTES.some((r) => (r === '/' ? path === '/' : path.startsWith(r)));
 
-// Screens a signed-out visitor may open. Player profile pages are deliberately
+// Screens a visitor (signed out, or signed in without a claimed name) may open. Player profile pages are deliberately
 // not here: they show a player's record, which is private to that player.
 const GUEST_ROUTES = ['/', '/rankings', '/activity'];
 
@@ -104,7 +104,14 @@ export const Layout: React.FC = () => {
       navigate('/login', { replace: true });
       return;
     }
-    if (!player && path !== '/claim') { navigate('/claim', { replace: true }); return; }
+    if (!player && path !== '/claim') {
+      // Signed in but no roster name claimed: a visitor. They browse the same
+      // read-only screens a guest does, and are not pushed to /claim. Claiming
+      // stays one tap away in the top bar. Everything else needs a player.
+      if (GUEST_ROUTES.includes(path)) return;
+      navigate('/', { replace: true });
+      return;
+    }
     if (player && path === '/claim') {
       // Carl, asked what a new player should see first: "Their own record."
       // ClaimPage sets this flag the moment a name is claimed, so the very

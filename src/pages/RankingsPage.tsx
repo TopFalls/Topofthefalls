@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, X, Swords } from 'lucide-react';
+import { Search, X, Swords, Bell, BellRing } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRankings } from '../hooks/useRankings';
 import { useProtectedPlayers } from '../hooks/useProtectedPlayers';
 import { useChallengeCooldown } from '../hooks/useChallengeCooldown';
+import { useFollows } from '../hooks/useFollows';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { ChallengeCooldownNotice } from '../components/ChallengeCooldownNotice';
 import { useAuthStore } from '../stores/authStore';
 import { Avatar } from '../components/Avatar';
@@ -36,6 +38,8 @@ function RankCard({
   challengeMode,
   isGuest,
   canIssue,
+  following,
+  onToggleFollow,
 }: {
   rp: RankedPlayer;
   myPosition: number | null;
@@ -46,6 +50,8 @@ function RankCard({
   challengeMode: boolean;
   isGuest: boolean;
   canIssue: boolean;
+  following: boolean;
+  onToggleFollow: () => void;
 }) {
   const navigate = useNavigate();
   const pos       = rp.ranking.position;
@@ -141,6 +147,20 @@ function RankCard({
           </div>
         </div>
 
+        {/* Follow: notifies this account when the player finishes a match. */}
+        {!isMe && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleFollow(); }}
+            aria-pressed={following}
+            aria-label={following ? `Stop following ${rp.player.full_name}` : `Follow ${rp.player.full_name}`}
+            className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg transition-colors"
+            style={{ color: following ? 'var(--toc-theme-accent-2)' : '#6B7280' }}
+          >
+            {following ? <BellRing size={18} /> : <Bell size={18} />}
+          </button>
+        )}
+
         {/* Challenge button */}
         {(challengeMode || eligible) && eligible && (
           <motion.button
@@ -172,7 +192,11 @@ function RankCard({
 export default function RankingsPage() {
   const { data: rankings = [], isLoading, isError, refetch } = useRankings();
   const { player, session } = useAuthStore();
-  const isGuest = !session;
+  // Signed in without a claimed name is still a visitor: read-only, no records.
+  const isGuest = !session || !player;
+  const follows = useFollows();
+  const push = usePushNotifications();
+  const navigate = useNavigate();
   const cooldown = useChallengeCooldown();
   // Guests cannot challenge anyone, so never ask the database who is shielded.
   const { data: protectedPlayers } = useProtectedPlayers(!isGuest);
@@ -234,6 +258,25 @@ export default function RankingsPage() {
       </div>
 
       <ChallengeCooldownNotice state={cooldown} />
+
+      {/* Following only notifies if this phone has been allowed to. Offered once
+          there is someone to notify about, and never to a phone that cannot. */}
+      {follows.followed.size > 0 && push.supported && !push.subscribed && push.permission !== 'denied' && (
+        <div className="glass-card p-3 mb-3 flex items-center gap-3">
+          <BellRing size={18} className="text-[#9CA3AF] shrink-0" />
+          <p className="flex-1 text-sm font-[Barlow] text-[#E8E2D6] leading-snug">
+            Get a notification when a player you follow finishes a match.
+          </p>
+          <button
+            onClick={push.subscribe}
+            disabled={push.loading}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-semibold text-white disabled:opacity-40"
+            style={{ background: 'var(--toc-theme-accent)' }}
+          >
+            Turn on
+          </button>
+        </div>
+      )}
       {/* Search */}
       <div className="relative mb-3">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
@@ -296,6 +339,8 @@ export default function RankingsPage() {
                 challengeMode={challengeMode}
                 isGuest={isGuest}
                 canIssue={cooldown.canIssue}
+                following={follows.followed.has(rp.player.id)}
+                onToggleFollow={() => (follows.isSignedIn ? follows.toggle(rp.player.id) : navigate('/login'))}
               />
             ))
         }

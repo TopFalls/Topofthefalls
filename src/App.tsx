@@ -43,10 +43,12 @@ const Suspense: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 // The front door serves two different people. A signed-in player gets their own
 // home screen — challenges waiting, matches to confirm, their record. Somebody
 // who has just heard about the league and typed the address in gets the guest
-// page: the list, live scores, what happened lately, and a way in.
+// page: the list, live scores, what happened lately, and a way in. Someone signed
+// in without a claimed name is a visitor too, and sees the same read-only page.
 const HomeRoute: React.FC = () => {
   const session = useAuthStore((s) => s.session);
-  return session ? <HomePage /> : <GuestHomePage />;
+  const player = useAuthStore((s) => s.player);
+  return session && player ? <HomePage /> : <GuestHomePage />;
 };
 
 export default function App() {

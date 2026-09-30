@@ -72,7 +72,8 @@ export default function ActivityPage() {
   // and the match-fee rows that name a player and how they paid. Signed-in
   // players read the table and see league business as they always have —
   // minus the treasury, which is admins only.
-  const isGuest = !session;
+  const { player } = useAuthStore();
+  const isGuest = !session || !player;
 
   const { data: feed = [], isLoading, isError, refetch } = useQuery<ActivityFeedItem[]>({
     queryKey: ['activity-feed-full', filter, limit, isGuest],

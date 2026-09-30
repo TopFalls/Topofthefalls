@@ -1,5 +1,55 @@
 # TOF change log — what the editing room shipped
 
+## 2026-09-30 — Visitors browse read-only; follow players; push for followers (prepared, not live)
+
+**Requested:** Someone signed in without a claimed name should just see Home,
+The List and Activity read-only, not be sent to the claim screen. Let them follow
+players and get notifications, free of charge.
+**Prepared:** Signed-in visitors stay on the three read-only screens and use the
+same guest views, so they see nothing a signed-out visitor cannot. The top bar
+shows "Claim name" and "Sign out". Claiming is optional, not forced. The List has
+a bell on each row to follow a player, and offers to turn on alerts after the
+first follow. When a match is confirmed, everyone following either player gets a
+push worded like the public activity feed. The two players in the match are
+skipped, since they already get their own. Notifications no longer replace one
+another (they shared a single tag). Devices are stored per account per phone, so a
+second phone no longer overwrites the first, and visitors can register one.
+**Notifications cost:** Push is free per message. No text messages are sent for
+notifications. Text is used only for the sign-in code (paid; see the phone
+sign-in entry above).
+**Validation:** Build and 196 tests pass; lint shows only the 3 errors already on
+main. Not run in a browser or on a phone.
+**Not live until:** the migration `20260930130000_follow_players_and_push_devices.sql`
+is applied, then the `submit-result`, `create-challenge` and `send-push` functions
+are redeployed (they now share one sender), then the frontend is merged. Old
+players' alerts keep working throughout because the older table is still read.
+**Not built:** an in-app "following" feed. The public activity feed does not carry
+which player an event is about, and adding that is a deliberate widening of what
+guests can read. Only confirmed match results notify followers so far. Admin-settled
+results, challenges and rank changes do not yet.
+
+---
+
+## 2026-09-30 — Phone-number sign-in (prepared, not live)
+
+**Requested:** Sign in with a phone number instead of email. Existing players
+re-claim their names on first phone sign-in.
+**Prepared:** The sign-in screen asks for a mobile number (US, 10 digits) and
+texts a 6-digit code. Settings shows the phone number. Migration
+`20260930120000_phone_sign_in.sql` makes profile email optional, adds a unique
+phone column and lets the signup trigger copy it. Email accounts keep working.
+**Validation:** Build and 190 tests pass. Not exercised against a real SMS.
+**Not live until:** (1) the Phone provider and an SMS sender are enabled on the
+pinned Supabase project (auth config, needs the owner); (2) the migration is
+applied; (3) then the frontend is merged. Merging the frontend first would stop
+sign-in working.
+**Open:** Carl's super_admin and Mike's admin role are granted by email, so
+they must be re-linked after they sign in by phone. Admin "add player" still
+invites by email and needs a phone version. The "visitors can sign in and see
+Activity" request is unresolved: Activity is already open to signed-out guests.
+
+---
+
 ## 2026-09-12 — Challenge-loss wait released
 
 **Requested:** Losing a challenge up blocks issuing challenges for seven days,
