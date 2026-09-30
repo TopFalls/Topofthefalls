@@ -11,6 +11,7 @@ import { Avatar } from '../components/Avatar';
 import { GlassCard } from '../components/GlassCard';
 import { InactiveToggleCard } from '../components/InactiveToggleCard';
 import { Button } from '../components/Button';
+import { formatPhone } from '../lib/phone';
 
 const DISCIPLINES = ['8 Ball', '9 Ball', '10 Ball', 'Saratoga'] as const;
 
@@ -131,7 +132,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div className="font-[Bebas_Neue] text-2xl text-[#E8E2D6]">{player.full_name}</div>
-                <div className="text-[#9CA3AF] text-sm font-[Barlow]">{profile?.email}</div>
+                <div className="text-[#9CA3AF] text-sm font-[Barlow]">{profile?.phone ? formatPhone(profile.phone) : profile?.email}</div>
                 <div className="text-[var(--toc-theme-accent)] font-[Azeret_Mono] text-sm">
                   Rank #{myRanking.ranking.position}
                 </div>
@@ -264,7 +265,7 @@ export default function SettingsPage() {
             </Button>
 
             <div className="text-xs text-[#6B7280] font-[Barlow] mt-3">
-              Email (read-only): {profile?.email}
+              {profile?.phone ? 'Phone' : 'Email'} (read-only): {profile?.phone ? formatPhone(profile.phone) : profile?.email}
             </div>
           </GlassCard>
         </motion.div>

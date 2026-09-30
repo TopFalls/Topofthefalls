@@ -1,29 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, KeyRound, AlertCircle, ArrowLeft, HelpCircle } from 'lucide-react';
+import { Smartphone, KeyRound, AlertCircle, ArrowLeft, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { EKGLine } from '../components/EKGLine';
 import { Button } from '../components/Button';
 import { LEAGUE } from '../config/league';
+import { toE164, formatPhone } from '../lib/phone';
 
-type Step = 'email' | 'code';
+type Step = 'phone' | 'code';
 
-// Auto-focus the email field only on desktop. On phones it pops the keyboard
+// Auto-focus the phone field only on desktop. On phones it pops the keyboard
 // the moment the page loads, covering the title and disorienting first-time visitors.
-const SHOULD_AUTO_FOCUS_EMAIL =
+const SHOULD_AUTO_FOCUS_PHONE =
   typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
 
 export default function LoginPage() {
   const navigate              = useNavigate();
-  const [step, setStep]       = useState<Step>('email');
-  const [email, setEmail]     = useState('');
+  const [step, setStep]       = useState<Step>('phone');
+  const [phone, setPhone]     = useState('');
   const [code, setCode]       = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
   const [resent, setResent]   = useState(false);
-  // Supabase refuses a second code for the same address inside 60 seconds and
-  // returns 429 `over_email_send_rate_limit`. Players were tapping Send four
+  // Supabase refuses a second code for the same number inside 60 seconds and
+  // returns 429 `over_sms_send_rate_limit`. Players were tapping Send four
   // and five times because nothing on screen told them a code was already on
   // its way, so they collected refusals instead of a code. Count it down where
   // they can see it.
@@ -48,7 +49,7 @@ export default function LoginPage() {
     const wait = /after (\d+) seconds/i.exec(message);
     if (wait) return `A code is already on its way. You can ask for another in ${wait[1]} seconds.`;
     if (/rate limit/i.test(message)) return 'Too many tries just now. Give it a minute and try again.';
-    if (/invalid|not found/i.test(message)) return 'That email address does not look right. Check it and try again.';
+    if (/invalid|not found/i.test(message)) return 'That phone number does not look right. Check it and try again.';
     return message;
   };
 
@@ -59,18 +60,17 @@ export default function LoginPage() {
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    const e164 = toE164(phone);
+    if (!e164) { setError('Enter a 10-digit US phone number, like (406) 555-1234.'); return; }
     setLoading(true);
     setError('');
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-    });
+    const { error: err } = await supabase.auth.signInWithOtp({ phone: e164 });
     setLoading(false);
     if (err) {
       setError(friendlyAuthError(err.message));
       setCooldown(secondsToWait(err.message));
       // Still move to the code screen: a code from the earlier tap is on its
-      // way, and leaving them on the email form makes them send yet again.
+      // way, and leaving them on the phone form makes them send yet again.
       if (/after \d+ seconds/i.test(err.message)) setStep('code');
     } else {
       setStep('code');
@@ -85,10 +85,12 @@ export default function LoginPage() {
     if (trimmed.length !== 6) return;
     setLoading(true);
     setError('');
+    const e164 = toE164(phone);
+    if (!e164) { setLoading(false); setError('That phone number does not look right.'); return; }
     const { error: err } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
+      phone: e164,
       token: trimmed,
-      type: 'email',
+      type: 'sms',
     });
     setLoading(false);
     if (err) { setError('Invalid or expired code. Try again.'); }
@@ -98,9 +100,9 @@ export default function LoginPage() {
   const handleResend = async () => {
     setError('');
     setCode('');
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-    });
+    const e164 = toE164(phone);
+    if (!e164) return;
+    const { error: err } = await supabase.auth.signInWithOtp({ phone: e164 });
     if (err) {
       setError(friendlyAuthError(err.message));
       setCooldown(secondsToWait(err.message));
@@ -170,9 +172,9 @@ export default function LoginPage() {
         </div>
 
         <AnimatePresence mode="wait">
-          {step === 'email' ? (
+          {step === 'phone' ? (
             <motion.form
-              key="email-step"
+              key="phone-step"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -182,23 +184,23 @@ export default function LoginPage() {
             >
               <div>
                 <label
-                  htmlFor="login-email"
+                  htmlFor="login-phone"
                   className="block text-[#9CA3AF] text-sm font-[Barlow] mb-2"
                 >
-                  Email Address
+                  Mobile Phone Number
                 </label>
                 <div className="relative">
-                  <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+                  <Smartphone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]" />
                   <input
-                    id="login-email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                    placeholder="your@email.com"
-                    autoFocus={SHOULD_AUTO_FOCUS_EMAIL}
+                    id="login-phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    value={phone}
+                    onChange={(e) => { setPhone(e.target.value); setError(''); }}
+                    placeholder="(406) 555-1234"
+                    autoFocus={SHOULD_AUTO_FOCUS_PHONE}
                     className="w-full pl-10 pr-4 py-3 rounded-lg bg-[#252525] border border-[#333] text-[#E8E2D6] font-[Barlow] text-base placeholder-[#6B7280] focus:outline-none focus:border-[var(--toc-theme-accent)] focus:ring-1 focus:ring-[var(--toc-theme-glow-soft)] transition-colors"
                   />
                 </div>
@@ -219,19 +221,19 @@ export default function LoginPage() {
                 fullWidth
                 size="lg"
                 loading={loading}
-                disabled={!email.trim() || cooldown > 0}
+                disabled={!toE164(phone) || cooldown > 0}
               >
-                <Mail size={16} />
+                <Smartphone size={16} />
                 {cooldown > 0 ? `Wait ${cooldown}s` : 'Send Sign-In Code'}
               </Button>
 
               {/* Helper bumped from text-xs (12px) to text-sm (14px) for legibility.
                   Supabase auth is configured for 6-digit OTP codes (supabase/config.toml). */}
               <p className="text-center text-[#A1A1AA] text-sm font-[Barlow] leading-relaxed">
-                We'll email you a 6-digit code. No password needed.
+                We'll text you a 6-digit code. No password needed. Message and data rates may apply.
               </p>
 
-              {/* Nobody should have to hand over an email address to find out
+              {/* Nobody should have to hand over a phone number to find out
                   what this is. The list, the live scores and the league feed
                   are all readable without an account. */}
               <div className="pt-1 border-t border-white/5">
@@ -258,18 +260,18 @@ export default function LoginPage() {
               <div className="flex items-center gap-2 mb-1">
                 <button
                   type="button"
-                  onClick={() => { setStep('email'); setCode(''); setError(''); }}
-                  aria-label="Back to email step"
+                  onClick={() => { setStep('phone'); setCode(''); setError(''); }}
+                  aria-label="Back to phone number step"
                   className="text-[#9CA3AF] hover:text-[#E8E2D6] transition-colors"
                 >
                   <ArrowLeft size={18} />
                 </button>
                 <div>
                   <div className="font-[Barlow] font-semibold text-[#E8E2D6] text-sm">
-                    Check your email
+                    Check your texts
                   </div>
                   <div className="text-[#A1A1AA] text-sm font-[Barlow]">
-                    Code sent to {email}
+                    Code sent to {formatPhone(toE164(phone))}
                   </div>
                 </div>
               </div>
@@ -321,7 +323,7 @@ export default function LoginPage() {
                 {cooldown > 0 ? (
                   <p className="text-[#9CA3AF] text-sm font-[Barlow]">
                     {resent ? 'Code resent. ' : 'Code sent. '}
-                    Check your email — you can ask for another in {cooldown}s.
+                    Check your texts — you can ask for another in {cooldown}s.
                   </p>
                 ) : resent ? (
                   <p className="text-[#22C55E] text-sm font-[Barlow]">Code resent!</p>

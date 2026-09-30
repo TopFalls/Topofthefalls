@@ -1,5 +1,25 @@
 # TOF change log — what the editing room shipped
 
+## 2026-09-30 — Phone-number sign-in (prepared, not live)
+
+**Requested:** Sign in with a phone number instead of email. Existing players
+re-claim their names on first phone sign-in.
+**Prepared:** The sign-in screen asks for a mobile number (US, 10 digits) and
+texts a 6-digit code. Settings shows the phone number. Migration
+`20260930120000_phone_sign_in.sql` makes profile email optional, adds a unique
+phone column and lets the signup trigger copy it. Email accounts keep working.
+**Validation:** Build and 190 tests pass. Not exercised against a real SMS.
+**Not live until:** (1) the Phone provider and an SMS sender are enabled on the
+pinned Supabase project (auth config, needs the owner); (2) the migration is
+applied; (3) then the frontend is merged. Merging the frontend first would stop
+sign-in working.
+**Open:** Carl's super_admin and Mike's admin role are granted by email, so
+they must be re-linked after they sign in by phone. Admin "add player" still
+invites by email and needs a phone version. The "visitors can sign in and see
+Activity" request is unresolved: Activity is already open to signed-out guests.
+
+---
+
 ## 2026-09-12 — Challenge-loss wait released
 
 **Requested:** Losing a challenge up blocks issuing challenges for seven days,

@@ -6,7 +6,8 @@ export interface Database {
       profiles: {
         Row: {
           id: string;
-          email: string;
+          email: string | null;
+          phone: string | null;
           display_name: string | null;
           role: 'player' | 'admin' | 'super_admin';
           avatar_url: string | null;
