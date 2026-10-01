@@ -136,6 +136,25 @@ instance; Mike's separately granted role is admin, not super_admin.
 Set-Location -LiteralPath C:\Users\cdali\Documents\Codex\TOF-Isolated
 ```
 
+### Standing instruction from Chase (2026-10-01): always offer the next task
+
+7. **End every piece of work by offering to take the next task**, naming it and
+   the first concrete step. Do not stop at "done" and wait to be asked.
+8. **When a step cannot be done from the session** (it needs Chase's own
+   accounts, a secret, his local machine, or an approval only he can give),
+   never say "go check the settings". Write instructions he can follow without
+   searching:
+   - numbered steps, in execution order, one action per step;
+   - every URL as a literal link, never "the billing page" (if a URL or menu
+     path is unverified, say so and give the best-guess literal string);
+   - every command in one fenced block, with **where to run it** (which app or
+     terminal) and **from what path** (`Set-Location -LiteralPath
+     C:\Users\cdali\Documents\Codex\TOF-Isolated` first);
+   - every value to enter given verbatim in a code block;
+   - never ask him to paste a secret into chat: say where to copy it from and
+     where it goes;
+   - say what success looks like and what to tell the session when done.
+
 ## Stack note
 
 This is a **Vite + React SPA** (`npm run build` → `tsc -b && vite build`, output

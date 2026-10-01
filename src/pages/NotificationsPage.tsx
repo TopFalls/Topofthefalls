@@ -36,6 +36,11 @@ const TYPE_ICONS: Record<string, string> = {
   inactivity_warning:  '⏳',
   challenge_forfeited: '⚖️',
   challenge_washed:    '🤝',
+  challenge_response_due_24h: '⏳',
+  challenge_response_due_6h:  '⏰',
+  challenge_response_overdue: '⚠️',
+  match_deadline_24h:         '🎱',
+  match_deadline_6h:          '⏰',
 };
 
 const VENUES = LEAGUE.sponsorBars;

@@ -63,3 +63,8 @@ content_path = "./supabase/templates/magic_link.html"
 [auth.email.template.invite]
 subject = "You're invited to Top of the Falls"
 content_path = "./supabase/templates/invite.html"
+
+# Called by pg_cron, not by a browser, so it cannot carry a login. It authenticates
+# with a vault secret instead (see supabase/functions/dispatch-push/index.ts).
+[functions.dispatch-push]
+verify_jwt = false
