@@ -6,7 +6,9 @@ self.addEventListener('push', (event) => {
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       data: { url: data.url ?? '/' },
-      tag: 'totf',
+      // A per-notification tag lets several sit side by side; pushes sent without
+      // one keep the old shared tag and replace each other.
+      tag: data.tag ?? 'totf',
       renotify: true,
     })
   );
