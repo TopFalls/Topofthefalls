@@ -182,27 +182,27 @@ function RespondModal({
         {showDeclineConfirm ? (
           <div className="space-y-3 mb-2 p-3 rounded-xl border border-[#EF4444]/40 bg-[#EF4444]/5">
             <div className="text-sm font-[Barlow] font-semibold text-[#E8E2D6]">
-              Decline counts as a forfeit
+              Decline this challenge?
             </div>
             <ul className="text-xs font-[Barlow] text-[#9CA3AF] space-y-1 list-disc list-inside">
-              <li>The challenger gets a win by forfeit and may take your spot if they are lower ranked.</li>
-              <li>You get a forfeit on your record and a post-match cooldown.</li>
+              <li>Neither player's spot on the list changes.</li>
+              <li>Nothing is added to either record, and no wait starts.</li>
               <li>No match fee is owed.</li>
-              <li>An admin can reverse this only if your rankings and stats have not changed yet.</li>
+              <li>The league admin is told and decides whether anything should change.</li>
             </ul>
             <div className="flex gap-2 pt-1">
               <Button variant="ghost" fullWidth size="sm" onClick={() => setShowDeclineConfirm(false)} disabled={loading}>
                 Keep pending
               </Button>
               <Button variant="danger" fullWidth size="sm" onClick={handleDecline} loading={loading}>
-                Decline anyway
+                Yes, decline
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex gap-2 mb-2">
             <Button variant="danger" fullWidth onClick={() => setShowDeclineConfirm(true)} disabled={loading}>
-              Decline (forfeit)
+              Decline
             </Button>
             <Button variant="success" fullWidth onClick={handleAccept} loading={loading}>
               Accept ✓
@@ -364,14 +364,14 @@ export default function ChallengesPage() {
                       {c.status === 'pending' && hoursLeft > 0 && (
                         <div className={`text-xs font-[Barlow] mt-1 ${hoursLeft <= 24 ? 'text-[#EF4444]' : hoursLeft <= 72 ? 'text-[#F59E0B]' : 'text-[#6B7280]'}`}>
                           {hoursLeft <= 24 ? '⚠️' : '⏰'}{' '}
-                          Expires in{' '}
+                          Please respond within{' '}
                           {hoursLeft >= 48
                             ? `${Math.floor(hoursLeft / 24)}d ${hoursLeft % 24}h`
                             : `${hoursLeft}h`}
                         </div>
                       )}
                       {c.status === 'pending' && hoursLeft === 0 && (
-                        <div className="text-[#EF4444] text-xs font-[Barlow] mt-1">⚠️ Expiring soon</div>
+                        <div className="text-[#F59E0B] text-xs font-[Barlow] mt-1">⏰ Response time is up. Nothing happens automatically, so please answer when you can.</div>
                       )}
                     </div>
 

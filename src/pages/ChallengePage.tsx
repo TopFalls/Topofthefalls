@@ -308,7 +308,7 @@ export default function ChallengePage() {
                   { label: 'Their Rank', value: `#${target.ranking.position}` },
                   { label: 'Discipline', value: discipline ?? '' },
                   { label: 'Race',       value: `First to ${race}` },
-                  { label: 'Expires',    value: `${LEAGUE.challengeResponseHours} hours` },
+                  { label: 'Respond within', value: `${LEAGUE.challengeResponseHours} hours` },
                 ].map((row) => (
                   <div key={row.label} className="flex justify-between items-center">
                     <span className="text-[#9CA3AF] text-sm font-[Barlow]">{row.label}</span>

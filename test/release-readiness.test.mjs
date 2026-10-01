@@ -49,8 +49,10 @@ test('forfeit stats and reversal state are stored in the database', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.reverse_challenge_decline_forfeit/i);
 });
 
-test('decline is implemented as a forfeit and admin reversal is available', () => {
-  assert.match(respondToChallenge, /apply_challenge_decline_forfeit/);
+test('a decline is no longer a forfeit, and admin reversal of old forfeits stays available', () => {
+  // Superseded 2026-10-01: nothing moves the list automatically. See
+  // test/no-automatic-list-changes.test.mjs for the positive checks.
+  assert.doesNotMatch(respondToChallenge, /apply_challenge_decline_forfeit/);
   assert.match(respondToChallenge, /reverse_challenge_decline_forfeit/);
   assert.doesNotMatch(respondToChallenge, /admin will confirm your spot move/i);
 });

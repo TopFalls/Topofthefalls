@@ -26,10 +26,10 @@ const RULE_FIELDS: Array<{ key: keyof SettingsFormState; label: string; unit: st
   { key: 'min_race', label: 'Min race length', unit: 'games — no maximum' },
   { key: 'challenge_range', label: 'Challenge range', unit: 'spots up, from #13 down' },
   { key: 'challenge_weekly_limit', label: 'Weekly challenge limit', unit: 'challenges per 7 days' },
-  { key: 'challenge_response_hours', label: 'Challenge response window', unit: 'hours to accept or decline' },
-  { key: 'match_play_days', label: 'Match play window', unit: 'days after acceptance' },
+  { key: 'challenge_response_hours', label: 'Challenge response window', unit: 'hours to accept or decline; a reminder only, nothing happens when it ends' },
+  { key: 'match_play_days', label: 'Match play window', unit: 'days after acceptance; a reminder only, nothing happens when it ends' },
   { key: 'cooldown_hours', label: 'Cooldown after moving up', unit: 'hours — winning from below' },
-  { key: 'loss_cooldown_hours', label: 'Decline-forfeit cooldown', unit: 'hours; a match loss starts 7 days, cleared by winning a defence' },
+  { key: 'loss_cooldown_hours', label: 'Wait after a loss', unit: 'hours; a match loss starts 7 days, cleared by winning a defence' },
 ];
 
 type SettingsFieldProps = {
