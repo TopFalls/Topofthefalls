@@ -74,10 +74,10 @@ test('create-challenge no longer sweeps expired challenges', () => {
   assert.doesNotMatch(create, /rpc\('expire_stale_challenges'\)/);
 });
 
-test('player-facing copy no longer promises an automatic forfeit', () => {
-  const rules = read('src/config/league.ts');
-  assert.doesNotMatch(rules, /challenger gets the spot/i);
-  assert.doesNotMatch(rules, /drops you two spots/i);
+test('the decline prompts no longer promise a forfeit', () => {
+  // The written rules in src/config/league.ts are deliberately NOT asserted
+  // here: they keep describing the strict rules because this is a temporary
+  // testing period and the automatic behaviour is expected to return.
   for (const page of ['src/pages/ChallengesPage.tsx', 'src/pages/NotificationsPage.tsx']) {
     const src = read(page);
     assert.doesNotMatch(src, /Decline counts as a forfeit/i, page);
