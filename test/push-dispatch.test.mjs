@@ -94,3 +94,15 @@ test('the schedules exist and the dispatcher only calls out when something is wa
   assert.match(migration, /cron\.schedule\(\s*\n?\s*'tof-dispatch-push', '\* \* \* \* \*'/);
   assert.match(migration, /WHERE EXISTS \(SELECT 1 FROM vault\.decrypted_secrets WHERE name = 'push_dispatch_secret'\)/);
 });
+
+test('the browser gets only the PUBLIC push key, in the right shape, and never a private one', () => {
+  const config = read('src/config/push.ts');
+  const key = /DEFAULT_VAPID_PUBLIC_KEY =\s*'([^']+)'/.exec(config)?.[1];
+  assert.match(key ?? '', /^B[A-Za-z0-9_-]{86}$/, 'an uncompressed P-256 public key: 87 base64url characters starting with B');
+  assert.match(config, /import\.meta\.env\.VITE_VAPID_PUBLIC_KEY/, 'a Vercel setting can still override it');
+  assert.match(read('src/hooks/usePushNotifications.ts'), /from '\.\.\/config\/push'/);
+  // A VAPID private key is 43 base64url characters; none may sit in the browser code.
+  for (const file of ['src/config/push.ts', 'src/hooks/usePushNotifications.ts']) {
+    assert.doesNotMatch(read(file), /VAPID_PRIVATE_KEY['"]?\s*[:=]\s*['"][A-Za-z0-9_-]{40,}/, file);
+  }
+});
