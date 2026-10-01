@@ -131,7 +131,6 @@ export default function SettingsPage() {
               </div>
               <div>
                 <div className="font-[Bebas_Neue] text-2xl text-[#E8E2D6]">{player.full_name}</div>
-                <div className="text-[#9CA3AF] text-sm font-[Barlow]">{profile?.email}</div>
                 <div className="text-[var(--toc-theme-accent)] font-[Azeret_Mono] text-sm">
                   Rank #{myRanking.ranking.position}
                 </div>
@@ -263,9 +262,6 @@ export default function SettingsPage() {
               Save Profile
             </Button>
 
-            <div className="text-xs text-[#6B7280] font-[Barlow] mt-3">
-              Email (read-only): {profile?.email}
-            </div>
           </GlassCard>
         </motion.div>
       )}

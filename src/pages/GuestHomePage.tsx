@@ -169,7 +169,7 @@ export default function GuestHomePage() {
             Already on the list?
           </h2>
           <p className="text-[#9CA3AF] text-sm font-[Barlow] mb-4">
-            Sign in with your email to claim your name, issue challenges and keep
+            Sign in with your name, phone number and PIN to issue challenges and keep
             your own record.
           </p>
           <button

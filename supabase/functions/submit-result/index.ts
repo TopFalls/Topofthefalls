@@ -305,7 +305,7 @@ async function confirmResult(
 // -- Admin-entered results (questionnaire K3) --------------------------------
 //
 // Carl: "Leave them on the list I will enter there results myself." Some of the
-// 119 players have no email or will not use an app, but they still play and
+// 119 players do not use the app, but they still play and
 // still move on the list. This lets an admin record a finished match for them.
 //
 // It reuses confirmResult, the same path a normal two-player confirmation

@@ -39,7 +39,11 @@ TOF defaults (verify current behavior before relying on these notes):
 - Disciplines: 8 Ball, 9 Ball, 10 Ball, Saratoga (open to every player)
 - Venues: Silver Spur, Lido, Black Eagle Country Club
 - Roster: 117 players, seeded by `20260609141000_seed_tof_roster.sql`
-- Claim flow: email → 6-digit code → claim own unclaimed roster name
+- Sign-in: pick your name, then phone number + 4-digit PIN. **No email anywhere in
+  the app** (Chase, 2026-10-01). Signed-in members switch themselves over once;
+  signed-out members ask to join and a league admin approves under Admin →
+  Sign-ins. See `docs/phone-login.md`. The older email → 6-digit code claim flow
+  is gone
 - Carl Higgins is super_admin before claiming his player row
   (`20260729120000_league_admin_bootstrap.sql`)
 - Mike Birkoski (`disturbingiraq@gmail.com`) holds `admin` access so a second

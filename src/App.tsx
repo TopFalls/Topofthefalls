@@ -20,7 +20,7 @@ const NotificationsPage= React.lazy(() => import('./pages/NotificationsPage'));
 const SettingsPage     = React.lazy(() => import('./pages/SettingsPage'));
 const AdminPage        = React.lazy(() => import('./pages/AdminPage'));
 const AdminStatsPage   = React.lazy(() => import('./pages/AdminStatsPage'));
-const AuthCallbackPage = React.lazy(() => import('./pages/AuthCallbackPage'));
+const SwitchLoginPage  = React.lazy(() => import('./pages/SwitchLoginPage'));
 const TreasuryPage     = React.lazy(() => import('./pages/TreasuryPage'));
 const ActivityPage     = React.lazy(() => import('./pages/ActivityPage'));
 
@@ -58,9 +58,12 @@ export default function App() {
             <Route element={<Layout />}>
               {/* Public */}
               <Route path="/login"         element={<Suspense><LoginPage /></Suspense>} />
-              <Route path="/auth/callback" element={<Suspense><AuthCallbackPage /></Suspense>} />
+              {/* Old emailed sign-in links no longer exist; anyone arriving from one lands on the sign-in page. */}
+              <Route path="/auth/callback" element={<Navigate to="/login" replace />} />
               {/* Authenticated — unclaimed */}
               <Route path="/claim"         element={<Suspense><ClaimPage /></Suspense>} />
+              {/* Signed in the old way: one screen to move over to phone + PIN */}
+              <Route path="/switch-login"  element={<Suspense><SwitchLoginPage /></Suspense>} />
               {/* Open to guests, view only — see the guard in Layout */}
               <Route path="/"              element={<Suspense><HomeRoute /></Suspense>} />
               <Route path="/rankings"      element={<Suspense><RankingsPage /></Suspense>} />
