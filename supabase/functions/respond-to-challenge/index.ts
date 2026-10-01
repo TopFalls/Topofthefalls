@@ -95,35 +95,123 @@ serve(async (req) => {
       if (challenge.challenged_id !== callerPlayer.id) return new Response(JSON.stringify({ error: 'Not authorized.' }), { status: 403, headers: cors });
       if (challenge.status !== 'pending') return new Response(JSON.stringify({ error: 'Challenge is not pending.' }), { status: 409, headers: cors });
 
-      // A decline is a forfeit — ranking, cooldown, stats, activity, and notifications
-      // are all written by apply_challenge_decline_forfeit so admin can later reverse it.
-      const { error: rpcError } = await supabase.rpc('apply_challenge_decline_forfeit', {
-        p_challenge_id: challenge_id,
-        p_actor_profile_id: user.id,
-      });
-      if (rpcError) {
-        console.error('apply_challenge_decline_forfeit failed', rpcError);
-        return new Response(JSON.stringify({ error: 'Could not record decline as forfeit.' }), { status: 500, headers: cors });
-      }
+      // league_settings.automatic_list_changes decides what a decline means.
+      // Anything but an explicit `true` (a failed read, a missing row) takes the
+      // plain path, so an error here can never move somebody on the list.
+      const { data: settingsRow } = await supabase.from('league_settings').select('automatic_list_changes').limit(1).maybeSingle();
+      const automaticListChanges = settingsRow?.automatic_list_changes === true;
 
-      const { data: challengerPlayer } = await supabase.from('players').select('full_name').eq('id', challenge.challenger_id).single();
-      const { data: challengedPlayer } = await supabase.from('players').select('full_name').eq('id', challenge.challenged_id).single();
-      await Promise.all([
-        sendPush(
-          supabase,
-          challenge.challenger_id,
-          '⚖️ Challenge declined as forfeit',
-          `${challengedPlayer?.full_name ?? 'Your opponent'} declined your ${challenge.discipline} challenge — recorded as your win.`,
-          '/challenges',
-        ),
-        sendPush(
-          supabase,
-          challenge.challenged_id,
-          '⚖️ Decline recorded as forfeit',
-          `Declining ${challengerPlayer?.full_name ?? 'the challenger'} counted as a loss. Talk to an admin if this was an accident.`,
-          '/challenges',
-        ),
-      ]);
+      if (automaticListChanges) {
+        // A decline is a forfeit — ranking, cooldown, stats, activity, and notifications
+        // are all written by apply_challenge_decline_forfeit so admin can later reverse it.
+        const { error: rpcError } = await supabase.rpc('apply_challenge_decline_forfeit', {
+          p_challenge_id: challenge_id,
+          p_actor_profile_id: user.id,
+        });
+        if (rpcError) {
+          console.error('apply_challenge_decline_forfeit failed', rpcError);
+          return new Response(JSON.stringify({ error: 'Could not record decline as forfeit.' }), { status: 500, headers: cors });
+        }
+
+        const { data: challengerPlayer } = await supabase.from('players').select('full_name').eq('id', challenge.challenger_id).single();
+        const { data: challengedPlayer } = await supabase.from('players').select('full_name').eq('id', challenge.challenged_id).single();
+        await Promise.all([
+          sendPush(
+            supabase,
+            challenge.challenger_id,
+            '⚖️ Challenge declined as forfeit',
+            `${challengedPlayer?.full_name ?? 'Your opponent'} declined your ${challenge.discipline} challenge — recorded as your win.`,
+            '/challenges',
+          ),
+          sendPush(
+            supabase,
+            challenge.challenged_id,
+            '⚖️ Decline recorded as forfeit',
+            `Declining ${challengerPlayer?.full_name ?? 'the challenger'} counted as a loss. Talk to an admin if this was an accident.`,
+            '/challenges',
+          ),
+        ]);
+      } else {
+        // A decline is only a decline. It does not move the list, touch either
+        // player's record or start a cooldown: the league admin decides whether
+        // anything should change. The conditional update means two taps (or a tap
+        // racing an admin cancel) cannot decline the same challenge twice.
+        const { data: declinedRows, error: declineError } = await supabase
+          .from('challenges')
+          .update({
+            status: 'declined',
+            response_message: 'Declined by the challenged player.',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', challenge_id)
+          .eq('status', 'pending')
+          .select('id');
+        if (declineError) {
+          console.error('decline failed', declineError);
+          return new Response(JSON.stringify({ error: 'Could not record the decline.' }), { status: 500, headers: cors });
+        }
+        if (!declinedRows?.length) {
+          return new Response(JSON.stringify({ error: 'Challenge is not pending.' }), { status: 409, headers: cors });
+        }
+
+        const { data: challengerPlayer } = await supabase.from('players').select('full_name').eq('id', challenge.challenger_id).single();
+        const { data: challengedPlayer } = await supabase.from('players').select('full_name').eq('id', challenge.challenged_id).single();
+        const challengerName = challengerPlayer?.full_name ?? 'The challenger';
+        const challengedName = challengedPlayer?.full_name ?? 'The challenged player';
+
+        const { error: notificationError } = await supabase.from('notifications').insert([
+          {
+            player_id: challenge.challenger_id,
+            type: 'challenge_declined',
+            title: 'Challenge declined',
+            body: `${challengedName} declined your ${challenge.discipline} challenge. The list has not changed.`,
+            reference_id: challenge_id,
+            reference_type: 'challenge',
+          },
+          {
+            player_id: challenge.challenged_id,
+            type: 'challenge_declined',
+            title: 'Challenge declined',
+            body: `You declined ${challengerName}'s ${challenge.discipline} challenge. The list has not changed.`,
+            reference_id: challenge_id,
+            reference_type: 'challenge',
+          },
+        ]);
+        if (notificationError) console.error('decline notifications failed', notificationError);
+
+        // Declining moves nobody on its own, so the admin is told and decides.
+        const { error: alertError } = await supabase.from('admin_alerts').insert({
+          alert_type: 'challenge_declined',
+          headline: `${challengedName} declined ${challengerName}'s ${challenge.discipline} challenge`,
+          detail: 'Nothing on the list has changed. Update the list if necessary.',
+          challenge_id,
+        });
+        if (alertError) console.error('decline admin alert failed', alertError);
+
+        const { error: feedError } = await supabase.from('activity_feed').insert({
+          event_type: 'challenge_declined',
+          headline: `${challengedName} declined ${challengerName}'s ${challenge.discipline} challenge.`,
+          actor_player_id: challenge.challenged_id,
+        });
+        if (feedError) console.error('decline activity failed', feedError);
+
+        await Promise.all([
+          sendPush(
+            supabase,
+            challenge.challenger_id,
+            'Challenge declined',
+            `${challengedName} declined your ${challenge.discipline} challenge. The list has not changed.`,
+            '/challenges',
+          ),
+          sendPush(
+            supabase,
+            challenge.challenged_id,
+            'Challenge declined',
+            `You declined ${challengerName}'s challenge. The list has not changed.`,
+            '/challenges',
+          ),
+        ]);
+      }
 
     } else if (action === 'reverse_decline') {
       const { data: actorProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();

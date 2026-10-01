@@ -13,11 +13,13 @@ import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
 import { InactivePlayerBanner } from '../components/InactivePlayerBanner';
 import { LEAGUE, type LeagueDiscipline } from '../config/league';
+import { useAutomaticListChanges } from '../hooks/useAutomaticListChanges';
 
 type Discipline = LeagueDiscipline;
 const DISCIPLINES = LEAGUE.disciplines;
 
 export default function ChallengePage() {
+  const automaticListChanges = useAutomaticListChanges();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { player } = useAuthStore();
@@ -308,7 +310,7 @@ export default function ChallengePage() {
                   { label: 'Their Rank', value: `#${target.ranking.position}` },
                   { label: 'Discipline', value: discipline ?? '' },
                   { label: 'Race',       value: `First to ${race}` },
-                  { label: 'Expires',    value: `${LEAGUE.challengeResponseHours} hours` },
+                  { label: automaticListChanges ? 'Expires' : 'Respond within', value: `${LEAGUE.challengeResponseHours} hours` },
                 ].map((row) => (
                   <div key={row.label} className="flex justify-between items-center">
                     <span className="text-[#9CA3AF] text-sm font-[Barlow]">{row.label}</span>

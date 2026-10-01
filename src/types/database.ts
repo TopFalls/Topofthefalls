@@ -335,6 +335,7 @@ export interface Database {
           first_challenge_range: number;
           updated_at: string;
           open_player_rule: boolean;
+          automatic_list_changes: boolean; // false during the testing period: nothing moves the list by itself
         };
         Insert: Omit<Database['public']['Tables']['league_settings']['Row'], 'id' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['league_settings']['Insert']>;

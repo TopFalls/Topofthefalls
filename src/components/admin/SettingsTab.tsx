@@ -32,6 +32,12 @@ const RULE_FIELDS: Array<{ key: keyof SettingsFormState; label: string; unit: st
   { key: 'loss_cooldown_hours', label: 'Decline-forfeit cooldown', unit: 'hours; a match loss starts 7 days, cleared by winning a defence' },
 ];
 
+// While automatic list changes are off these two windows only drive reminders.
+const REMINDER_ONLY_WHEN_PAUSED: Partial<Record<keyof SettingsFormState, true>> = {
+  challenge_response_hours: true,
+  match_play_days: true,
+};
+
 type SettingsFieldProps = {
   label: string;
   unit: string;
@@ -114,13 +120,20 @@ export function SettingsTab() {
     <div className="space-y-4">
       <GlassCard className="p-4">
         <h3 className="font-[Bebas_Neue] text-xl text-[#E8E2D6] mb-1">League Rules</h3>
+        <div className="text-xs font-[Barlow] text-[#9CA3AF] mb-2" data-testid="automatic-list-changes-status">
+          {settings.automatic_list_changes
+            ? 'Automatic list changes: ON. Unanswered challenges and declines forfeit, and inactive players drop, by themselves.'
+            : 'Automatic list changes: OFF (testing period). Nothing moves the list by itself. Overdue challenges, declines and inactive players raise an alert and you decide.'}
+        </div>
         {RULE_FIELDS.map((field) => (
           <SettingsField
             key={field.key}
             label={field.label}
             value={form[field.key]}
             onChange={(value) => set(field.key, value)}
-            unit={field.unit}
+            unit={!settings.automatic_list_changes && field.key in REMINDER_ONLY_WHEN_PAUSED
+              ? `${field.unit}; a reminder only for now, nothing happens when it ends`
+              : field.unit}
           />
         ))}
       </GlassCard>
