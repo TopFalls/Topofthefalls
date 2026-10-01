@@ -129,6 +129,8 @@ serve(async (req) => {
     if (!myPos || !theirPos) return new Response(JSON.stringify({ error: 'Could not retrieve rankings.' }), { status: 404, headers: corsHeaders });
     if (!myRank || !theirRank) return new Response(JSON.stringify({ error: 'Inactive players cannot take part in challenges.' }), { status: 409, headers: corsHeaders });
 
+    await supabase.rpc('expire_stale_challenges');
+
     const eligibilityError = canChallenge(myRank, theirRank, challengeRange);
     if (eligibilityError) return new Response(JSON.stringify({ error: eligibilityError }), { status: 400, headers: corsHeaders });
 
@@ -279,9 +281,10 @@ serve(async (req) => {
     // writes. The warning cannot disagree with the outcome, because it IS the
     // outcome.
     //
-    // Read-only: nothing here sweeps or expires challenges any more. An overdue
-    // challenge stays open and only raises an admin alert (cron), so the preview
-    // and the send read the same board.
+    // Not perfectly read-only: expire_stale_challenges() ran further up. That
+    // is deliberate -- it is idempotent housekeeping that also runs hourly on
+    // cron, and skipping it would have the preview read a staler board than
+    // the send would.
     if (isPreview) {
       return new Response(JSON.stringify({
         preview: true,

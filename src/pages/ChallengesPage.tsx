@@ -18,6 +18,9 @@ import { RankingRowSkeleton } from '../components/Skeleton';
 import { formatDateTime } from '../utils/time';
 import type { Challenge } from '../types/database';
 import { LEAGUE } from '../config/league';
+import { DeclineConsequences } from '../components/DeclineConsequences';
+import { declineButtonLabel, declineConfirmLabel } from '../lib/declineCopy';
+import { useAutomaticListChanges } from '../hooks/useAutomaticListChanges';
 
 const VENUES = LEAGUE.sponsorBars;
 type Venue = typeof VENUES[number];
@@ -79,6 +82,7 @@ function RespondModal({
     onSuccess();
   };
 
+  const automatic = useAutomaticListChanges();
   const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
 
   const handleDecline = async () => {
@@ -181,28 +185,20 @@ function RespondModal({
 
         {showDeclineConfirm ? (
           <div className="space-y-3 mb-2 p-3 rounded-xl border border-[#EF4444]/40 bg-[#EF4444]/5">
-            <div className="text-sm font-[Barlow] font-semibold text-[#E8E2D6]">
-              Decline this challenge?
-            </div>
-            <ul className="text-xs font-[Barlow] text-[#9CA3AF] space-y-1 list-disc list-inside">
-              <li>Neither player's spot on the list changes.</li>
-              <li>Nothing is added to either record, and no wait starts.</li>
-              <li>No match fee is owed.</li>
-              <li>The league admin is told and decides whether anything should change.</li>
-            </ul>
+            <DeclineConsequences automatic={automatic} />
             <div className="flex gap-2 pt-1">
               <Button variant="ghost" fullWidth size="sm" onClick={() => setShowDeclineConfirm(false)} disabled={loading}>
                 Keep pending
               </Button>
               <Button variant="danger" fullWidth size="sm" onClick={handleDecline} loading={loading}>
-                Yes, decline
+                {declineConfirmLabel(automatic)}
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex gap-2 mb-2">
             <Button variant="danger" fullWidth onClick={() => setShowDeclineConfirm(true)} disabled={loading}>
-              Decline
+              {declineButtonLabel(automatic)}
             </Button>
             <Button variant="success" fullWidth onClick={handleAccept} loading={loading}>
               Accept ✓
@@ -222,6 +218,7 @@ function RespondModal({
 }
 
 export default function ChallengesPage() {
+  const automaticListChanges = useAutomaticListChanges();
   const { player } = useAuthStore();
   const { data: rankings = [] } = useRankings();
   const qc = useQueryClient();
@@ -364,14 +361,16 @@ export default function ChallengesPage() {
                       {c.status === 'pending' && hoursLeft > 0 && (
                         <div className={`text-xs font-[Barlow] mt-1 ${hoursLeft <= 24 ? 'text-[#EF4444]' : hoursLeft <= 72 ? 'text-[#F59E0B]' : 'text-[#6B7280]'}`}>
                           {hoursLeft <= 24 ? '⚠️' : '⏰'}{' '}
-                          Please respond within{' '}
+                          {automaticListChanges ? 'Expires in' : 'Please respond within'}{' '}
                           {hoursLeft >= 48
                             ? `${Math.floor(hoursLeft / 24)}d ${hoursLeft % 24}h`
                             : `${hoursLeft}h`}
                         </div>
                       )}
                       {c.status === 'pending' && hoursLeft === 0 && (
-                        <div className="text-[#F59E0B] text-xs font-[Barlow] mt-1">⏰ Response time is up. Nothing happens automatically, so please answer when you can.</div>
+                        automaticListChanges
+                        ? <div className="text-[#EF4444] text-xs font-[Barlow] mt-1">⚠️ Expiring soon</div>
+                        : <div className="text-[#F59E0B] text-xs font-[Barlow] mt-1">⏰ Response time is up. Nothing happens automatically, so please answer when you can.</div>
                       )}
                     </div>
 

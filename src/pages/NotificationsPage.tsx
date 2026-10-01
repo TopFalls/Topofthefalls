@@ -14,6 +14,9 @@ import { RankingRowSkeleton } from '../components/Skeleton';
 import { formatDistanceToNow } from '../utils/time';
 import { LEAGUE } from '../config/league';
 import type { Notification } from '../types/database';
+import { DeclineConsequences } from '../components/DeclineConsequences';
+import { declineButtonLabel, declineConfirmLabel } from '../lib/declineCopy';
+import { useAutomaticListChanges } from '../hooks/useAutomaticListChanges';
 
 const TYPE_ICONS: Record<string, string> = {
   challenge_received: '⚔️',
@@ -46,6 +49,7 @@ function RespondInline({
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const automatic = useAutomaticListChanges();
   const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
   const [venue, setVenue] = useState<Venue | ''>('');
   const [date, setDate] = useState('');
@@ -87,29 +91,21 @@ function RespondInline({
       <div className="mt-3 space-y-2">
         {showDeclineConfirm ? (
           <div className="space-y-3 p-3 rounded-xl border border-[#EF4444]/40 bg-[#EF4444]/5">
-            <div className="text-sm font-[Barlow] font-semibold text-[#E8E2D6]">
-              Decline this challenge?
-            </div>
-            <ul className="text-xs font-[Barlow] text-[#9CA3AF] space-y-1 list-disc list-inside">
-              <li>Neither player's spot on the list changes.</li>
-              <li>Nothing is added to either record, and no wait starts.</li>
-              <li>No match fee is owed.</li>
-              <li>The league admin is told and decides whether anything should change.</li>
-            </ul>
+            <DeclineConsequences automatic={automatic} />
             {error && <p className="text-[#EF4444] text-xs font-[Barlow]">{error}</p>}
             <div className="flex gap-2 pt-1">
               <Button variant="ghost" fullWidth size="sm" onClick={() => setShowDeclineConfirm(false)} disabled={loading}>
                 Keep pending
               </Button>
               <Button variant="danger" fullWidth size="sm" onClick={handleDecline} loading={loading}>
-                Yes, decline
+                {declineConfirmLabel(automatic)}
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex gap-2">
             <Button variant="danger" size="sm" disabled={loading} onClick={() => { setError(''); setShowDeclineConfirm(true); }}>
-              Decline
+              {declineButtonLabel(automatic)}
             </Button>
             <Button variant="success" size="sm" onClick={() => { setError(''); setOpen(true); }}>
               Accept ✓

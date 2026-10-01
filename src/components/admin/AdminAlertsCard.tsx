@@ -7,9 +7,11 @@ import { formatDateTime } from '../../utils/time';
 /**
  * Carl is notified, and decides.
  *
- * Nothing moves the list on its own. Overdue challenges, declines and inactive
- * players each raise an alert here and the admin decides what, if anything,
- * to change on the Rankings tab. The 90-day review and wash requests land
+ * With league_settings.automatic_list_changes ON, inactivity drift is applied
+ * automatically and every drop raises an alert here so an exception can be put
+ * back on the Rankings tab. With it OFF (the testing period) nothing moves by
+ * itself: overdue challenges, declines and inactive players each raise an
+ * alert here and the admin decides. The 90-day review and wash requests land
  * here too. Carl has no player row, so notifications —
  * which key off player_id — cannot reach him.
  */
