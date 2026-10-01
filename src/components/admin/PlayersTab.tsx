@@ -10,8 +10,6 @@ import { AdminQueryError } from './AdminShared';
 import { StatsResetButtons } from './StatsResetControls';
 import type { Player } from '../../types/database';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function PlayersTab() {
   const qc = useQueryClient();
   // Which player's stats-reset panel is expanded, if any.
@@ -49,24 +47,15 @@ export function PlayersTab() {
   const [adding, setAdding]         = useState(false);
   const [newName, setNewName]       = useState('');
   const [newFargo, setNewFargo]     = useState('');
-  const [newEmail, setNewEmail]     = useState('');
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError]     = useState('');
   const [addBanner, setAddBanner]   = useState('');
-  // The player was added but the invite email did not go out — not a failure.
-  const [addWarning, setAddWarning] = useState('');
   const [activeToggling, setActiveToggling] = useState<string | null>(null);
   const [activeError, setActiveError] = useState('');
   const [removingId, setRemovingId]     = useState<string | null>(null);
   const [removeLoading, setRemoveLoading] = useState(false);
   const [removeError, setRemoveError]   = useState('');
   const [removeBanner, setRemoveBanner] = useState('');
-  const [invitingId, setInvitingId]   = useState<string | null>(null);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteError, setInviteError] = useState('');
-  const [inviteBanner, setInviteBanner] = useState('');
-
   // Open (unreversed) removals, so a removed player can be put back from the
   // same screen they were removed on.
   const { data: removalEvents = [] } = useQuery<{ id: string; player_id: string }[]>({
@@ -143,9 +132,8 @@ export function PlayersTab() {
     setAddLoading(true);
     setAddError('');
     setAddBanner('');
-    setAddWarning('');
 
-    const payload: { full_name: string; fargo_rating?: number; email?: string } = { full_name: newName.trim() };
+    const payload: { full_name: string; fargo_rating?: number } = { full_name: newName.trim() };
     const trimmedFargo = newFargo.trim();
     if (trimmedFargo !== '') {
       const numeric = Number(trimmedFargo);
@@ -156,30 +144,15 @@ export function PlayersTab() {
       }
       payload.fargo_rating = numeric;
     }
-    const trimmedEmail = newEmail.trim();
-    if (trimmedEmail !== '') {
-      if (!EMAIL_RE.test(trimmedEmail)) {
-        setAddError('Email must be a valid address.');
-        setAddLoading(false);
-        return;
-      }
-      payload.email = trimmedEmail;
-    }
 
     try {
       const json = await callEdgeFunction<{
         message?: string;
         ranking_position?: number;
-        invite_warning?: string | null;
       }>('add-player', payload);
-      if (json.invite_warning) {
-        setAddWarning(json.message ?? `Added ${newName.trim()} at #${json.ranking_position}, but the invite email did not go out.`);
-      } else {
-        setAddBanner(json.message ?? `Added ${newName.trim()} at #${json.ranking_position}.`);
-      }
+      setAddBanner(json.message ?? `Added ${newName.trim()} at #${json.ranking_position}.`);
       setNewName('');
       setNewFargo('');
-      setNewEmail('');
       setAdding(false);
       qc.invalidateQueries({ queryKey: ['admin-players'] });
       qc.invalidateQueries({ queryKey: ['admin-player-metrics'] });
@@ -190,31 +163,6 @@ export function PlayersTab() {
       setAddError(edgeErrorMessage(err, 'Could not add the player.'));
     } finally {
       setAddLoading(false);
-    }
-  };
-
-  const handleInvite = async (player: Player) => {
-    const trimmedEmail = inviteEmail.trim();
-    if (!trimmedEmail) { setInviteError('Email is required.'); return; }
-    if (!EMAIL_RE.test(trimmedEmail)) {
-      setInviteError('Email must be a valid address.');
-      return;
-    }
-    setInviteLoading(true);
-    setInviteError('');
-    setInviteBanner('');
-    try {
-      const json = await callEdgeFunction<{ message?: string }>('add-player', { player_id: player.id, email: trimmedEmail });
-      setInviteBanner(json.message ?? `Invite sent to ${trimmedEmail}.`);
-      setInvitingId(null);
-      setInviteEmail('');
-      qc.invalidateQueries({ queryKey: ['admin-players'] });
-      qc.invalidateQueries({ queryKey: ['audit-events'] });
-      qc.invalidateQueries({ queryKey: ['activity-feed-full'] });
-    } catch (err) {
-      setInviteError(edgeErrorMessage(err, 'Could not send invite.'));
-    } finally {
-      setInviteLoading(false);
     }
   };
 
@@ -231,18 +179,15 @@ export function PlayersTab() {
           <input type="number" min={0} step={1} inputMode="numeric" value={newFargo} onChange={(e) => setNewFargo(e.target.value)} placeholder="Fargo rating (optional)"
             onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
             className="w-full px-3 py-2.5 rounded-lg bg-[#252525] border border-[#333] text-[#E8E2D6] font-[Barlow] text-sm focus:outline-none focus:border-[var(--toc-theme-accent)] mb-2" />
-          <input type="email" inputMode="email" autoComplete="off" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="Email (optional — sends invite)"
-            onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
-            className="w-full px-3 py-2.5 rounded-lg bg-[#252525] border border-[#333] text-[#E8E2D6] font-[Barlow] text-sm focus:outline-none focus:border-[var(--toc-theme-accent)] mb-1" />
           <p className="text-[#6B7280] text-xs font-[Barlow] mb-3">
-            Leave blank to add as unclaimed. With an email we also try to send an invite — if it
-            doesn't go out, the player is still added and you can invite them later.
+            They are added as unclaimed. To sign in they pick their name on the sign-in
+            page and ask to be let in; you approve it under Sign-ins.
           </p>
           {addError && <p className="text-[#EF4444] text-xs font-[Barlow] mb-2">{addError}</p>}
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => { setAdding(false); setNewName(''); setNewFargo(''); setNewEmail(''); setAddError(''); }}>Cancel</Button>
+            <Button variant="ghost" size="sm" onClick={() => { setAdding(false); setNewName(''); setNewFargo(''); setAddError(''); }}>Cancel</Button>
             <Button variant="primary" size="sm" loading={addLoading} disabled={!newName.trim()} onClick={handleAddPlayer}>
-              {newEmail.trim() !== '' ? 'Add & Invite' : 'Add Player'}
+              Add Player
             </Button>
           </div>
         </GlassCard>
@@ -253,8 +198,6 @@ export function PlayersTab() {
       )}
 
       {addBanner && <p className="text-[#22C55E] text-xs font-[Barlow]">{addBanner}</p>}
-      {addWarning && <p className="text-[#F59E0B] text-xs font-[Barlow]">{addWarning}</p>}
-      {inviteBanner && <p className="text-[#22C55E] text-xs font-[Barlow]">{inviteBanner}</p>}
       {activeError && <p className="text-[#EF4444] text-xs font-[Barlow]">{activeError}</p>}
       {removeBanner && <p className="text-[#22C55E] text-xs font-[Barlow]">{removeBanner}</p>}
 
@@ -277,7 +220,6 @@ export function PlayersTab() {
       <p className="text-[#9CA3AF] text-xs font-[Barlow]">{filteredPlayers.length} {filter === 'all' ? 'total' : filter} players</p>
       {filteredPlayers.map((p) => {
         const fr = fargoByPlayer.get(p.id);
-        const isInviting = invitingId === p.id;
         const isResetting = resettingId === p.id;
         return (
           <GlassCard key={p.id} className="p-3">
@@ -295,13 +237,6 @@ export function PlayersTab() {
                     : p.profile_id ? 'Claimed' : 'Unclaimed'}
                 </div>
               </div>
-              {!p.removed_at && !p.profile_id && !isInviting && (
-                <button
-                  onClick={() => { setInvitingId(p.id); setInviteEmail(''); setInviteError(''); setInviteBanner(''); }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-[Barlow] font-medium transition-colors bg-[#3B82F6]/20 text-[#3B82F6] border border-[#3B82F6]/30">
-                  Invite
-                </button>
-              )}
               {!isResetting && (
                 <button
                   onClick={() => { setResettingId(p.id); setResetBanner(''); }}
@@ -362,25 +297,6 @@ export function PlayersTab() {
                   onCancel={() => setResettingId(null)}
                   onDone={() => { setResettingId(null); setResetBanner(`${p.full_name}'s stats were reset.`); }}
                 />
-              </div>
-            )}
-            {isInviting && (
-              <div className="mt-3 space-y-2">
-                <input
-                  type="email"
-                  inputMode="email"
-                  autoFocus
-                  value={inviteEmail}
-                  onChange={(e) => { setInviteEmail(e.target.value); setInviteError(''); }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleInvite(p)}
-                  placeholder={`Email for ${p.full_name}`}
-                  className="w-full px-3 py-2 rounded-lg bg-[#252525] border border-[#333] text-[#E8E2D6] font-[Barlow] text-sm focus:outline-none focus:border-[var(--toc-theme-accent)]"
-                />
-                {inviteError && <p className="text-[#EF4444] text-xs font-[Barlow]">{inviteError}</p>}
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => { setInvitingId(null); setInviteEmail(''); setInviteError(''); }}>Cancel</Button>
-                  <Button variant="primary" size="sm" loading={inviteLoading} disabled={!inviteEmail.trim()} onClick={() => handleInvite(p)}>Send Invite</Button>
-                </div>
               </div>
             )}
           </GlassCard>

@@ -18,6 +18,9 @@ additional_redirect_urls = [
 # announcement to a 117-player roster would blow straight through.
 email_sent = 100
 
+# NOTE: the app no longer sends or uses email at all (phone + PIN sign-in, see
+# supabase/migrations/20261002120000_phone_login.sql). The email settings below are
+# kept only until the switch-over is finished and they are retired deliberately.
 [auth.email]
 enable_signup = true
 enable_confirmations = false
@@ -67,4 +70,14 @@ content_path = "./supabase/templates/invite.html"
 # Called by pg_cron, not by a browser, so it cannot carry a login. It authenticates
 # with a vault secret instead (see supabase/functions/dispatch-push/index.ts).
 [functions.dispatch-push]
+verify_jwt = false
+
+# Phone sign-in. Both are called before the person has a login, so neither can
+# carry one. phone-login counts every try per address and per name and locks out
+# repeat offenders; phone-request only leaves a note for an admin to approve.
+# The other two phone functions (switch-to-phone, manage-phone-login) need a login.
+[functions.phone-login]
+verify_jwt = false
+
+[functions.phone-request]
 verify_jwt = false

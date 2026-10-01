@@ -3,7 +3,6 @@ import type { RankedPlayer } from '../types/database';
 const DEMO_STORAGE_KEY = 'toc-demo-mode';
 const TOTF_DEMO_VALUE = 'totf';
 
-export const TOP_OF_THE_FALLS_DEMO_EMAIL = 'cj_higgins@msn.com';
 
 export const TOP_OF_THE_FALLS_ROSTER = [
   'Jerrod Korst',

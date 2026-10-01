@@ -28,7 +28,7 @@ export const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { session, player, isLoading, setSession, setProfile, setPlayer, setIsLoading, reset } = useAuthStore();
+  const { session, player, hasPhoneLogin, isLoading, setSession, setProfile, setPlayer, setHasPhoneLogin, setIsLoading, reset } = useAuthStore();
   const { isOffline, setIsOffline } = useUIStore();
   const [appReady, setAppReady] = useState(false);
   const demoMode = isTopOfTheFallsDemoMode();
@@ -79,19 +79,23 @@ export const Layout: React.FC = () => {
   }, []);
 
   const fetchProfileAndPlayer = async (userId: string) => {
-    const [profileRes, playerRes] = await Promise.all([
+    const [profileRes, playerRes, loginRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('players').select('*').eq('profile_id', userId).single(),
+      supabase.rpc('my_login_status'),
     ]);
     if (profileRes.data) setProfile(profileRes.data as Profile);
     if (playerRes.data) setPlayer(playerRes.data as Player);
+    // If the question fails, leave it unknown: nobody is shut out of the app
+    // because of a hiccup, they just are not nudged to switch until it answers.
+    setHasPhoneLogin(loginRes.error ? null : loginRes.data === true);
   };
 
   // Route guards
   useEffect(() => {
     if (isLoading) return;
     const path = location.pathname;
-    const publicPaths = ['/login', '/auth/callback'];
+    const publicPaths = ['/login'];
     if (publicPaths.includes(path)) return;
     if (demoMode) return;
 
@@ -105,6 +109,13 @@ export const Layout: React.FC = () => {
       return;
     }
     if (!player && path !== '/claim') { navigate('/claim', { replace: true }); return; }
+    // Everyone who signed in the old way switches to phone + PIN once. Until
+    // they do this is the only screen they get; afterwards it is closed.
+    if (player && hasPhoneLogin === false && path !== '/switch-login') {
+      navigate('/switch-login', { replace: true });
+      return;
+    }
+    if (hasPhoneLogin === true && path === '/switch-login') { navigate('/', { replace: true }); return; }
     if (player && path === '/claim') {
       // Carl, asked what a new player should see first: "Their own record."
       // ClaimPage sets this flag the moment a name is claimed, so the very
@@ -115,7 +126,7 @@ export const Layout: React.FC = () => {
       navigate(justClaimed ? `/player/${player.id}` : '/', { replace: true });
       return;
     }
-  }, [session, player, isLoading, location.pathname, navigate, demoMode]);
+  }, [session, player, hasPhoneLogin, isLoading, location.pathname, navigate, demoMode]);
 
   // Realtime subscriptions
   useEffect(() => {

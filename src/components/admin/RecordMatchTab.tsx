@@ -12,7 +12,7 @@ import { LEAGUE } from '../../config/league';
  * Enter a result for players who do not use the app (questionnaire K3).
  *
  * Carl: "Leave them on the list I will enter there results myself." Not every
- * one of the 119 has email, and they still play. This records the match as if
+ * one of the 119 uses the app, and they still play. This records the match as if
  * the two players had confirmed it themselves — same ladder swap, same stats,
  * same cooldowns — because the server runs the identical code path.
  */

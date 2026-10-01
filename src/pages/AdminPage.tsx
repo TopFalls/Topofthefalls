@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, AlertTriangle, Users, DollarSign, Settings, FileText,
-  Trophy, Swords, List, BarChart3, Megaphone, ClipboardPen, type LucideIcon,
+  Trophy, Swords, List, BarChart3, Megaphone, ClipboardPen, KeyRound, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { Badge } from '../components/Badge';
@@ -16,9 +16,10 @@ import { SettingsTab } from '../components/admin/SettingsTab';
 import { AuditTab } from '../components/admin/AuditTab';
 import { AnnouncementsTab } from '../components/admin/AnnouncementsTab';
 import { RecordMatchTab } from '../components/admin/RecordMatchTab';
+import { SignInsTab } from '../components/admin/SignInsTab';
 import { AdminAlertsCard } from '../components/admin/AdminAlertsCard';
 
-type TabKey = 'disputes' | 'challenges' | 'matches' | 'record' | 'rankings' | 'players' | 'announce' | 'treasury' | 'settings' | 'audit';
+type TabKey = 'disputes' | 'challenges' | 'matches' | 'record' | 'rankings' | 'players' | 'signins' | 'announce' | 'treasury' | 'settings' | 'audit';
 
 const TABS: { key: TabKey; Icon: LucideIcon; label: string }[] = [
   { key: 'disputes',   Icon: AlertTriangle, label: 'Disputes'   },
@@ -27,6 +28,7 @@ const TABS: { key: TabKey; Icon: LucideIcon; label: string }[] = [
   { key: 'record',     Icon: ClipboardPen,  label: 'Record'     },
   { key: 'rankings',   Icon: List,          label: 'Rankings'   },
   { key: 'players',    Icon: Users,         label: 'Players'    },
+  { key: 'signins',    Icon: KeyRound,      label: 'Sign-ins'   },
   { key: 'announce',   Icon: Megaphone,     label: 'Announce'   },
   { key: 'treasury',   Icon: DollarSign,    label: 'Treasury'   },
   { key: 'settings',   Icon: Settings,      label: 'Settings'   },
@@ -94,6 +96,7 @@ export default function AdminPage() {
       {tab === 'record'     && <RecordMatchTab />}
       {tab === 'rankings'   && <RankingsTab />}
       {tab === 'players'    && <PlayersTab />}
+      {tab === 'signins'    && <SignInsTab />}
       {tab === 'announce'   && <AnnouncementsTab />}
       {tab === 'treasury'   && <TreasuryTab />}
       {tab === 'settings'   && <SettingsTab />}

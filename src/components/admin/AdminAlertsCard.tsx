@@ -32,6 +32,7 @@ const ALERT_ICON: Record<string, string> = {
   challenge_play_deadline: '⏰',
   challenge_overdue: '⏰',
   challenge_declined: '✋',
+  login_request: '🔑',
   inactive_drift: '⬇️',
   inactive_90_day: '⏳',
   wash_requested: '🤝',
