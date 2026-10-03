@@ -17,7 +17,7 @@ alike, so it is easy to point one at the other's database by accident.
 - Production branch: `main`
 - Vercel project: `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`), team `tof2`
 - Supabase project/ref: `dpbgdisezxlttwrxqanu` (org `Top of the Falls`)
-- Public URL: `https://topofthefalls.vercel.app`
+- Public URL: `https://www.topofthefalls.online` (`topofthefalls.vercel.app` redirects to it)
 
 ## Original TOF app (Chase's) — separate, do not touch
 

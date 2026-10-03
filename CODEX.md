@@ -16,7 +16,7 @@ into the original app's resources.
 - Vercel project: `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`), team `Totf` / `tof2` (`team_TiDDLGgPBC8TlMQKmrNcFNl8`)
 - Supabase project/ref: `dpbgdisezxlttwrxqanu`, org `Top of the Falls` (`qlsdgysivqxpigttcaon`)
 - Supabase URL: `https://dpbgdisezxlttwrxqanu.supabase.co`
-- Public URL: `https://topofthefalls.vercel.app` (no custom domain)
+- Public URL: `https://www.topofthefalls.online` (`topofthefalls.vercel.app` redirects to it)
 
 Never substitute a value from one of the apps listed below.
 
@@ -27,7 +27,7 @@ one. Never point it at the other two.
 
 | App | GitHub | Vercel | Supabase | URL |
 |---|---|---|---|---|
-| **This instance (Carl's)** | `TopFalls/Topofthefalls` | `topofthefalls` (team `tof2`) | `dpbgdisezxlttwrxqanu` | `topofthefalls.vercel.app` |
+| **This instance (Carl's)** | `TopFalls/Topofthefalls` | `topofthefalls` (team `tof2`) | `dpbgdisezxlttwrxqanu` | `www.topofthefalls.online` |
 | Original TOF app (Chase's) | `cdalin1985/TOF` | `tof-app` | `sqcqmovskpoyutfyslym` | `tof-app-theta.vercel.app` |
 | TOC.Monster / Top of the Capital | `cdalin1985/claude-agent0toc` | `toc-app` | `toc1` | `toc.monster` |
 

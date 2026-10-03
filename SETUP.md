@@ -15,7 +15,7 @@ live; nothing in this guide may target it.
 - **GitHub production branch:** `main`
 - **Vercel project:** `topofthefalls` (`prj_jK1NPxfyM3pJN0iXqCyGPoHTzwXo`)
 - **Vercel team/org:** `Totf` / `tof2` (`team_TiDDLGgPBC8TlMQKmrNcFNl8`)
-- **Production URL:** `https://topofthefalls.vercel.app` (no custom domain)
+- **Production URL:** `https://www.topofthefalls.online` (the `topofthefalls.vercel.app` alias redirects to it)
 - **Supabase project name:** `cj_higgins@msn.com` (org `Top of the Falls`)
 - **Supabase project ref:** `dpbgdisezxlttwrxqanu`
 - **Supabase URL:** `https://dpbgdisezxlttwrxqanu.supabase.co`
@@ -23,11 +23,9 @@ live; nothing in this guide may target it.
 Do not substitute values from the upstream TOF app or from TOC.Monster — see
 `PROJECT_BOUNDARIES.md` for both.
 
-Deployment note: the Vercel project is **not yet Git-linked** — the Vercel
-GitHub App is not installed on the `TopFalls` org, so pushes to `main` do not
-auto-deploy. Deploy with `npx vercel deploy --prod` from this checkout until
-Carl installs the app (Vercel dashboard → Project → Settings → Git → Connect),
-after which `npx vercel git connect` completes the link.
+Deployment note: the Vercel project **is Git-linked** — a push to `main`
+deploys the frontend. Edge functions and migrations do not go through Git; see
+`CLAUDE.md` ("How this deploys").
 
 ## Stack
 
