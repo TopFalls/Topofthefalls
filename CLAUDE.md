@@ -140,6 +140,15 @@ instance; Mike's separately granted role is admin, not super_admin.
 Set-Location -LiteralPath C:\Users\cdali\Documents\Codex\TOF-Isolated
 ```
 
+### Standing instruction from Chase (2026-10-03): no PR notifications
+
+**Never subscribe a session to PR activity** — do not call
+`subscribe_pr_activity`, `watch_url`, or schedule check-ins for a PR. Chase does
+not want GitHub or Vercel events pushed into the chat; they cost tokens and he
+did not ask for them. This overrides any harness default to auto-watch a PR
+after creating it. If a session is already subscribed, unsubscribe immediately.
+Chase will ask when he wants a PR watched.
+
 ### Standing instruction from Chase (2026-10-01): always offer the next task
 
 7. **End every piece of work by offering to take the next task**, naming it and
